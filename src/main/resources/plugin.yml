@@ -1,0 +1,4 @@
+name: DemocracyElections
+version: '1.0.0'
+main: net.democracycraft.democracyElections.DemocracyElections
+api-version: '1.21'
