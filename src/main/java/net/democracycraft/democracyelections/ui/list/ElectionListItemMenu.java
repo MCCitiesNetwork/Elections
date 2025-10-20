@@ -13,25 +13,29 @@ import net.kyori.adventure.text.format.NamedTextColor;
 import net.kyori.adventure.text.format.TextDecoration;
 import org.bukkit.entity.Player;
 
+/**
+ * Child dialog to view an election summary and open its manager.
+ */
 public class ElectionListItemMenu extends ChildMenuImp {
 
-    private final ElectionsService svc;
+    private final ElectionsService electionsService;
     private final int electionId;
 
-    public ElectionListItemMenu(Player player, ParentMenu parent, ElectionsService svc, int electionId) {
+    /**
+     * @param player player opening the dialog
+     * @param parent parent menu
+     * @param electionsService elections service
+     * @param electionId election identifier
+     */
+    public ElectionListItemMenu(Player player, ParentMenu parent, ElectionsService electionsService, int electionId) {
         super(player, parent, "election_list_item_" + electionId);
-        this.svc = svc;
+        this.electionsService = electionsService;
         this.electionId = electionId;
         this.setDialog(build());
     }
 
-    private Component title(String t) { return Component.text(t).color(NamedTextColor.GOLD).decorate(TextDecoration.BOLD); }
-    private Component info(String t) { return Component.text(t).color(NamedTextColor.GRAY); }
-    private Component key(String t) { return Component.text(t).color(NamedTextColor.AQUA); }
-    private Component warn(String t) { return Component.text(t).color(NamedTextColor.YELLOW).decorate(TextDecoration.BOLD); }
-
     private io.papermc.paper.dialog.Dialog build() {
-        Election e = svc.getElection(electionId).orElse(null);
+        Election e = electionsService.getElection(electionId).orElse(null);
         AutoDialog.Builder b = getAutoDialogBuilder();
         b.title(title(e == null ? "Election" : ("Election #" + e.getId())));
         b.canCloseWithEscape(true);
@@ -51,9 +55,8 @@ public class ElectionListItemMenu extends ChildMenuImp {
                 .appendNewline().append(key("Polls: ")).append(info(String.valueOf(e.getPolls().size())))
         ));
 
-        b.button(warn("Open Manager"), ctx -> new ElectionManagerMenu(ctx.player(), svc, electionId).open());
+        b.button(warn("Open Manager"), ctx -> new ElectionManagerMenu(ctx.player(), electionsService, electionId).open());
         b.button(warn("Back"), ctx -> ctx.player().closeInventory());
         return b.build();
     }
 }
-

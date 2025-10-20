@@ -1,4 +1,12 @@
 package net.democracycraft.democracyelections.api.event;
 
-public interface DemocracyEvent {
+import org.bukkit.event.Event;
+import org.bukkit.event.HandlerList;
+
+abstract class DemocracyEvent extends Event {
+
+    public static HandlerList handlerList = new HandlerList();
+    public static HandlerList getHandlerList(){
+        return handlerList;
+    }
 }

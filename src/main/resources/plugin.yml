@@ -1,4 +1,35 @@
 name: DemocracyElections
-version: '1.0.0'
-main: net.democracycraft.democracyElections.DemocracyElections
+version: '${version}'
+main: net.democracycraft.democracyelections.DemocracyElections
 api-version: '1.21'
+commands:
+  democracyelections:
+    description: Elections commands (open manager, export data)
+    usage: /<command>
+    aliases: [elections]
+    permission: elections.user
+permissions:
+  elections.admin:
+    description: Grants all DemocracyElections permissions
+    default: op
+    children:
+      elections.manager: true
+      elections.user: true
+  elections.manager:
+    description: Manage elections (create, edit, open/close)
+    default: op
+    children:
+      elections.user: true
+  elections.user:
+    description: Use election features as a player
+    default: true
+  democracyelections.admin:
+    description: Legacy admin permission (alias)
+    default: op
+    children:
+      elections.admin: true
+  democracyelections.manager:
+    description: Legacy manager permission (alias)
+    default: op
+    children:
+      elections.manager: true

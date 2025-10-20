@@ -1,7 +1,8 @@
 plugins {
-    kotlin("jvm") version "2.3.0-Beta1"
+    java
     id("com.gradleup.shadow") version "8.3.0"
     id("xyz.jpenilla.run-paper") version "2.3.1"
+    kotlin("jvm")
 }
 
 group = "net.democracycraft"
@@ -16,7 +17,7 @@ repositories {
 
 dependencies {
     compileOnly("io.papermc.paper:paper-api:1.21.8-R0.1-SNAPSHOT")
-    implementation("org.jetbrains.kotlin:kotlin-stdlib-jdk8")
+    implementation(kotlin("stdlib-jdk8"))
 }
 
 tasks {
@@ -28,9 +29,10 @@ tasks {
     }
 }
 
-val targetJavaVersion = 21
-kotlin {
-    jvmToolchain(targetJavaVersion)
+java {
+    toolchain {
+        languageVersion.set(JavaLanguageVersion.of(21))
+    }
 }
 
 tasks.build {
