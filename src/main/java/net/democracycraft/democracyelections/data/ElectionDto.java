@@ -2,6 +2,11 @@ package net.democracycraft.democracyelections.data;
 
 import java.util.*;
 
+/**
+ * DTO representing an election and its mutable state during its lifecycle.
+ * Contains metadata (title, system, minimum votes), requirements, candidates, polls,
+ * ballots, voter registry, status changes, and temporal attributes (created/closes/duration).
+ */
 public class ElectionDto implements Dto {
     private final int id;
     private String title;
@@ -14,11 +19,13 @@ public class ElectionDto implements Dto {
     private final List<BallotDto> ballots = new ArrayList<>();
     private final Map<Integer, VoterDto> votersById = new LinkedHashMap<>();
     private final List<StatusChangeDto> statusChanges = new ArrayList<>();
-    private TimeStampDto closesAt; // null = nunca
+    /** When null, the election does not auto-close. */
+    private TimeStampDto closesAt;
     private final TimeStampDto createdAt;
 
-    private Integer durationDays; // null si no definido
-    private TimeDto durationTime; // null si no definido
+    /** Optional duration fields (null when not defined). */
+    private Integer durationDays;
+    private TimeDto durationTime;
 
     public ElectionDto(int id, String title, VotingSystem system, int minimumVotes, RequirementsDto requirements, TimeStampDto createdAt) {
         this.id = id;
@@ -66,12 +73,12 @@ public class ElectionDto implements Dto {
     public void addBallot(BallotDto ballot) { this.ballots.add(ballot); }
     public void addVoter(VoterDto voter) { this.votersById.put(voter.getId(), voter); }
 
-    // Nuevo alias explícito
+    /** Explicit alias for clarity. */
     public void appendBallot(BallotDto ballot) { this.ballots.add(ballot); }
 
     public void addStatusChange(StatusChangeDto change) { this.statusChanges.add(change); }
 
-    // Duración
+    // Duration
     public Integer getDurationDays() { return durationDays; }
     public void setDurationDays(Integer durationDays) { this.durationDays = durationDays; }
     public TimeDto getDurationTime() { return durationTime; }

@@ -22,20 +22,20 @@ public class ExportElection implements Subcommand {
     @Override
     public void execute(CommandContext ctx) {
         int id = ctx.requireInt(0, "id");
-        Optional<Election> opt = ctx.svc.getElection(id);
-        if (opt.isEmpty()) { ctx.sender.sendMessage("Election not found."); return; }
+        Optional<Election> opt = ctx.svc().getElection(id);
+        if (opt.isEmpty()) { ctx.sender().sendMessage("Election not found."); return; }
         String json = buildJson(opt.get(), false, ctx);
         try {
             String url = BytebinClient.uploadJson(json);
-            ctx.sender.sendMessage("Exported to: " + url);
+            ctx.sender().sendMessage("Exported to: " + url);
         } catch (Exception ex) {
-            ctx.sender.sendMessage("Export failed: " + ex.getMessage());
+            ctx.sender().sendMessage("Export failed: " + ex.getMessage());
         }
     }
 
     @Override
     public List<String> complete(CommandContext ctx) {
-        if (ctx.args.length==1) return ctx.filter(ctx.electionIds(), ctx.args[0]);
+        if (ctx.args().length==1) return ctx.filter(ctx.electionIds(), ctx.args()[0]);
         return List.of();
     }
 
@@ -99,8 +99,8 @@ public class ExportElection implements Subcommand {
         for (int i=0;i<changes.size();i++) {
             var ch = changes.get(i);
             sb.append('{');
-            kvs(sb, "time", CommandContext.tsToString(ch.getAt())).append(',');
-            kvs(sb, "type", ch.getType().name());
+            kvs(sb, "time", CommandContext.tsToString(ch.at())).append(',');
+            kvs(sb, "type", ch.type().name());
             sb.append('}'); if (i<changes.size()-1) sb.append(',');
         }
         sb.append(']');
@@ -109,7 +109,7 @@ public class ExportElection implements Subcommand {
             sb.append(',');
             sb.append("\"voters\":");
             sb.append('[');
-            List<Voter> vs = ctx.svc.listVoters(e.getId());
+            List<Voter> vs = ctx.svc().listVoters(e.getId());
             for (int i=0;i<vs.size();i++) {
                 Voter v = vs.get(i);
                 sb.append('{');

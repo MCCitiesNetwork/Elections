@@ -4,12 +4,18 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 
+/**
+ * DTO representing a submitted or in-progress ballot for a specific election and voter.
+ * For preferential voting, the order of selections matters; for block voting, the set is evaluated.
+ */
 public class BallotDto implements Dto {
     private final int id;
     private final int electionId;
     private final int voterId;
-    private final List<Integer> selections; // candidate ids; orden importa para PREFERENTIAL
-    private TimeStampDto submittedAt; // null hasta que se envía
+    /** Candidate IDs; for PREFERENTIAL voting the order is significant. */
+    private final List<Integer> selections;
+    /** When non-null, indicates the ballot has been submitted at that timestamp. */
+    private TimeStampDto submittedAt;
 
     public BallotDto(int id, int electionId, int voterId) {
         this.id = id;
@@ -31,4 +37,3 @@ public class BallotDto implements Dto {
     public TimeStampDto getSubmittedAt() { return submittedAt; }
     public void setSubmittedAt(TimeStampDto submittedAt) { this.submittedAt = submittedAt; }
 }
-

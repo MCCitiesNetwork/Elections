@@ -4,17 +4,22 @@ import io.papermc.paper.dialog.Dialog;
 import io.papermc.paper.registry.data.dialog.DialogBase;
 import io.papermc.paper.registry.data.dialog.body.DialogBody;
 import io.papermc.paper.registry.data.dialog.input.DialogInput;
+import net.democracycraft.democracyelections.DemocracyElections;
 import net.democracycraft.democracyelections.api.ui.ParentMenu;
 import net.democracycraft.democracyelections.data.RequirementsDto;
 import net.democracycraft.democracyelections.ui.ChildMenuImp;
 import net.democracycraft.democracyelections.util.dialog.AutoDialog;
+import net.democracycraft.democracyelections.util.permissions.PermissionNodesStore;
 import net.democracycraft.democracyelections.util.permissions.PermissionScanner;
+import net.democracycraft.democracyelections.util.permissions.data.PermissionNodesDto;
 import org.bukkit.entity.Player;
 import org.bukkit.permissions.Permission;
 
 import java.time.Duration;
 import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 
 public class ElectionCreateRequirementsMenu extends ChildMenuImp {
 
@@ -38,7 +43,14 @@ public class ElectionCreateRequirementsMenu extends ChildMenuImp {
 
         b.addBody(DialogBody.plainMessage(info("Toggle permissions required and set minimum active playtime (minutes).")));
 
-        for (Permission perm : PermissionScanner.getAllPermissions()) {
+        // Use configured nodes (prefix match)
+        PermissionNodesStore store = DemocracyElections.getInstance().getPermissionNodesStore();
+        PermissionNodesDto nodesDto = store.get();
+        List<Permission> filtered = PermissionScanner.getPermissionsForNodesPrefix(nodesDto);
+        Map<String, Permission> byName = new LinkedHashMap<>();
+        for (Permission p : filtered) byName.put(p.getName(), p);
+
+        for (Permission perm : byName.values()) {
             String key = permKey(perm.getName());
             boolean initial = draft.requirements.getPermissions().contains(perm.getName());
             b.addInput(DialogInput.bool(key, info(perm.getName())).initial(initial).build());
@@ -53,7 +65,7 @@ public class ElectionCreateRequirementsMenu extends ChildMenuImp {
 
         b.buttonWithPlayer(good("Next"), null, Duration.ofMinutes(5), 1, (p, resp) -> {
             List<String> newPerms = new ArrayList<>();
-            for (Permission perm : PermissionScanner.getAllPermissions()) {
+            for (Permission perm : byName.values()) {
                 String k = permKey(perm.getName());
                 Boolean sel = resp.getBoolean(k);
                 if (sel != null && sel) newPerms.add(perm.getName());

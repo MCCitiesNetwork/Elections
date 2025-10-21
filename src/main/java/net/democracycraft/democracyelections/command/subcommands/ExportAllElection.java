@@ -21,20 +21,20 @@ public class ExportAllElection implements Subcommand {
     @Override
     public void execute(CommandContext ctx) {
         int id = ctx.requireInt(0, "id");
-        Optional<Election> opt = ctx.svc.getElection(id);
-        if (opt.isEmpty()) { ctx.sender.sendMessage("Election not found."); return; }
+        Optional<Election> opt = ctx.svc().getElection(id);
+        if (opt.isEmpty()) { ctx.sender().sendMessage("Election not found."); return; }
         String json = ExportElection.buildJson(opt.get(), true, ctx);
         try {
             String url = BytebinClient.uploadJson(json);
-            ctx.sender.sendMessage("Exported (admin) to: " + url);
+            ctx.sender().sendMessage("Exported (admin) to: " + url);
         } catch (Exception ex) {
-            ctx.sender.sendMessage("Export failed: " + ex.getMessage());
+            ctx.sender().sendMessage("Export failed: " + ex.getMessage());
         }
     }
 
     @Override
     public List<String> complete(CommandContext ctx) {
-        if (ctx.args.length==1) return ctx.filter(ctx.electionIds(), ctx.args[0]);
+        if (ctx.args().length==1) return ctx.filter(ctx.electionIds(), ctx.args()[0]);
         return List.of();
     }
 }

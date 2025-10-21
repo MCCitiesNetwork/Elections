@@ -7,6 +7,7 @@ import net.democracycraft.democracyelections.command.framework.Subcommand;
 import net.democracycraft.democracyelections.command.subcommands.OpenManager;
 import net.democracycraft.democracyelections.command.subcommands.ExportElection;
 import net.democracycraft.democracyelections.command.subcommands.ExportAllElection;
+import net.democracycraft.democracyelections.command.subcommands.ReloadPermissionNodes;
 import org.bukkit.command.Command;
 import org.bukkit.command.CommandExecutor;
 import org.bukkit.command.CommandSender;
@@ -31,6 +32,7 @@ public class ElectionsCommand implements CommandExecutor, TabCompleter {
         register(new OpenManager());
         register(new ExportElection());
         register(new ExportAllElection());
+        register(new ReloadPermissionNodes());
     }
 
     private void register(Subcommand sub) {
@@ -71,6 +73,8 @@ public class ElectionsCommand implements CommandExecutor, TabCompleter {
             if (sender.hasPermission("democracyelections.manager") || sender.hasPermission("elections.manager") || sender.hasPermission("elections.admin") || sender.hasPermission("democracyelections.admin")) {
                 base.add("open");
                 base.add("exportall");
+                // reload perms for admins/managers
+                base.add("reloadperms");
             }
             String prefix = args.length == 0 ? "" : args[0].toLowerCase(Locale.ROOT);
             return base.stream().filter(s -> s.startsWith(prefix)).sorted().toList();

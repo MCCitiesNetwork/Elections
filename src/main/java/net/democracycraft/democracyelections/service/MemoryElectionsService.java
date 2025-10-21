@@ -9,8 +9,8 @@ import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Collectors;
 
 /**
- * Implementación en memoria, sin persistencia externa.
- * No UI; centrado en lógica de dominio y separación de identidad del votante.
+ * In-memory implementation of ElectionsService, without external persistence.
+ * Focused on domain logic and independent from any UI concerns.
  */
 public class MemoryElectionsService implements ElectionsService {
 
@@ -197,7 +197,8 @@ public class MemoryElectionsService implements ElectionsService {
 
         if (orderedCandidateIds == null) return false;
         List<Integer> clean = orderedCandidateIds.stream().filter(Objects::nonNull).toList();
-        LinkedHashSet<Integer> unique = new LinkedHashSet<>(clean); // preserva orden
+        // Preserve order while removing duplicates
+        LinkedHashSet<Integer> unique = new LinkedHashSet<>(clean);
         if (unique.size() < Math.max(1, dto.getMinimumVotes())) return false;
         Set<Integer> allowed = dto.getCandidates().stream().map(CandidateDto::getId).collect(Collectors.toSet());
         if (!allowed.containsAll(unique)) return false;
@@ -222,7 +223,7 @@ public class MemoryElectionsService implements ElectionsService {
 
         if (candidateIds == null) return false;
         Set<Integer> unique = new LinkedHashSet<>(candidateIds.stream().filter(Objects::nonNull).toList());
-        if (unique.size() != Math.max(1, dto.getMinimumVotes())) return false; // exacto
+        if (unique.size() != Math.max(1, dto.getMinimumVotes())) return false; // must be exact
         Set<Integer> allowed = dto.getCandidates().stream().map(CandidateDto::getId).collect(Collectors.toSet());
         if (!allowed.containsAll(unique)) return false;
 
@@ -242,7 +243,7 @@ public class MemoryElectionsService implements ElectionsService {
         return dto.getBallots().stream().mapToInt(BallotDto::getId).max().orElse(0) + 1;
     }
 
-    // Wrappers a la API pública, solo lectura
+    // Read-only wrappers to the public API interfaces
     private Election wrapElection(ElectionDto dto) { return new ElectionView(dto); }
     private Candidate wrapCandidate(CandidateDto dto) { return new CandidateView(dto); }
     private Poll wrapPoll(PollDto dto) { return new PollView(dto); }

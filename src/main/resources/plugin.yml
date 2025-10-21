@@ -23,6 +23,9 @@ permissions:
   elections.user:
     description: Use election features as a player
     default: true
+  elections.permissions.reload:
+    description: Reload the permission nodes configuration
+    default: op
   democracyelections.admin:
     description: Legacy admin permission (alias)
     default: op

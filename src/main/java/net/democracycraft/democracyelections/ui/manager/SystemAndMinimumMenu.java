@@ -67,21 +67,21 @@ public class SystemAndMinimumMenu extends ChildMenuImp {
 
         b.buttonWithPlayer(good("Save minimum"), null, Duration.ofMinutes(3), 1, (p, resp) -> {
             // Prefer the fine-adjust text value if present and valid; otherwise fall back to the slider
-            Integer mv = null;
+            Integer minVotes = null;
             String txt = resp.getText(Keys.MIN_VOTES_TEXT.name());
             if (txt != null && !txt.isBlank()) {
                 try {
                     int parsed = Integer.parseInt(txt.trim());
                     if (parsed >= 1 && parsed <= 10000) {
-                        mv = parsed;
+                        minVotes = parsed;
                     }
                 } catch (NumberFormatException ignored) { }
             }
-            if (mv == null) {
+            if (minVotes == null) {
                 Float f = resp.getFloat(Keys.MIN_VOTES.name());
-                mv = f == null ? currentMin : Math.round(f);
+                minVotes = f == null ? currentMin : Math.round(f);
             }
-            electionsService.setMinimumVotes(electionId, mv);
+            electionsService.setMinimumVotes(electionId, minVotes);
             p.sendMessage(good("Minimum votes updated."));
             new ElectionManagerMenu(p, electionsService, electionId).open();
         });

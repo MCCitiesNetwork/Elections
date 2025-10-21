@@ -3,7 +3,7 @@ package net.democracycraft.democracyelections.data;
 public class CandidateDto implements Dto {
     private final int id;
     private final String name;
-    private final String headDatabaseId; // opcional para UI futura
+    private final String headDatabaseId;
 
     public CandidateDto(int id, String name) {
         this(id, name, null);
