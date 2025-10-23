@@ -40,4 +40,25 @@ public interface ElectionsService {
     // Voting
     boolean submitPreferentialBallot(int electionId, int voterId, List<Integer> orderedCandidateIds);
     boolean submitBlockBallot(int electionId, int voterId, List<Integer> candidateIds);
+
+    /**
+     * Sets the serialized ItemStack bytes used to render a candidate's head item in UIs.
+     * @param electionId election identifier
+     * @param candidateId candidate identifier
+     * @param data ItemStack bytes (may be null to clear)
+     * @return true if updated
+     */
+    boolean setCandidateHeadItemBytes(int electionId, int candidateId, byte[] data);
+
+    /**
+     * @return serialized ItemStack bytes for a candidate head item, or null if not set
+     */
+    byte[] getCandidateHeadItemBytes(int electionId, int candidateId);
+
+    /**
+     * Records an EXPORTED status change in the election status log.
+     * @param electionId election identifier
+     * @return true if the election exists and the change was recorded
+     */
+    boolean markExported(int electionId);
 }

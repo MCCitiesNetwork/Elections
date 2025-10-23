@@ -3,8 +3,10 @@ package net.democracycraft.democracyelections;
 import net.democracycraft.democracyelections.api.service.ElectionsService;
 import net.democracycraft.democracyelections.command.ElectionsCommand;
 import net.democracycraft.democracyelections.service.MemoryElectionsService;
+import net.democracycraft.democracyelections.util.listener.PollInteractListener;
 import net.democracycraft.democracyelections.util.permissions.PermissionNodesStore;
 import org.bukkit.command.PluginCommand;
+import org.bukkit.plugin.PluginManager;
 import org.bukkit.plugin.java.JavaPlugin;
 
 /**
@@ -33,6 +35,9 @@ public class DemocracyElections extends JavaPlugin {
         this.permissionNodesStore = new PermissionNodesStore();
 
         startMainCommand();
+        // Register Bukkit listeners (non-dynamic) for voting booth interactions
+        PluginManager pm = getServer().getPluginManager();
+        pm.registerEvents(new PollInteractListener(this, electionsService), this);
     }
 
     private void startMainCommand() {

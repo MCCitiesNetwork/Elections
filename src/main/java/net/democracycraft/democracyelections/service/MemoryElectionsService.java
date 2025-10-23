@@ -59,7 +59,10 @@ public class MemoryElectionsService implements ElectionsService {
     public synchronized boolean setTitle(int electionId, String title) {
         ElectionDto dto = elections.get(electionId);
         if (dto == null) return false;
-        dto.setTitle(Objects.requireNonNullElse(title, ""));
+        String newTitle = Objects.requireNonNullElse(title, "");
+        if (Objects.equals(dto.getTitle(), newTitle)) return true;
+        dto.setTitle(newTitle);
+        dto.addStatusChange(new StatusChangeDto(now(), StateChangeType.TITLE_CHANGED));
         return true;
     }
 
@@ -67,7 +70,9 @@ public class MemoryElectionsService implements ElectionsService {
     public synchronized boolean setSystem(int electionId, VotingSystem system) {
         ElectionDto dto = elections.get(electionId);
         if (dto == null) return false;
+        if (dto.getSystem() == system) return true;
         dto.setSystem(system);
+        dto.addStatusChange(new StatusChangeDto(now(), StateChangeType.SYSTEM_CHANGED));
         return true;
     }
 
@@ -75,7 +80,11 @@ public class MemoryElectionsService implements ElectionsService {
     public synchronized boolean setMinimumVotes(int electionId, int minimum) {
         ElectionDto dto = elections.get(electionId);
         if (dto == null) return false;
-        dto.setMinimumVotes(Math.max(0, minimum));
+        int newMin = Math.max(0, minimum);
+        int effectiveNewMin = Math.max(1, newMin);
+        if (dto.getMinimumVotes() == effectiveNewMin) return true;
+        dto.setMinimumVotes(newMin);
+        dto.addStatusChange(new StatusChangeDto(now(), StateChangeType.MINIMUM_CHANGED));
         return true;
     }
 
@@ -83,7 +92,19 @@ public class MemoryElectionsService implements ElectionsService {
     public synchronized boolean setRequirements(int electionId, RequirementsDto requirements) {
         ElectionDto dto = elections.get(electionId);
         if (dto == null) return false;
+        RequirementsDto old = dto.getRequirements();
+        boolean changed;
+        if (old == null && requirements == null) {
+            changed = false;
+        } else if (old == null || requirements == null) {
+            changed = true;
+        } else {
+            changed = !Objects.equals(old.getPermissions(), requirements.getPermissions())
+                    || old.getMinActivePlaytimeMinutes() != requirements.getMinActivePlaytimeMinutes();
+        }
+        if (!changed) return true;
         dto.setRequirements(requirements);
+        dto.addStatusChange(new StatusChangeDto(now(), StateChangeType.REQUIREMENTS_CHANGED));
         return true;
     }
 
@@ -111,7 +132,14 @@ public class MemoryElectionsService implements ElectionsService {
     public synchronized boolean setClosesAt(int electionId, TimeStampDto closesAt) {
         ElectionDto dto = elections.get(electionId);
         if (dto == null) return false;
+        TimeStampDto old = dto.getClosesAt();
+        if (Objects.equals(old, closesAt)) return true;
+        StateChangeType type;
+        if (old == null) type = StateChangeType.CLOSES_AT_SET;
+        else if (closesAt == null) type = StateChangeType.CLOSES_AT_CLEARED;
+        else type = StateChangeType.CLOSES_AT_CHANGED;
         dto.setClosesAt(closesAt);
+        dto.addStatusChange(new StatusChangeDto(now(), type));
         return true;
     }
 
@@ -119,8 +147,18 @@ public class MemoryElectionsService implements ElectionsService {
     public synchronized boolean setDuration(int electionId, Integer days, TimeDto time) {
         ElectionDto dto = elections.get(electionId);
         if (dto == null) return false;
+        Integer oldDays = dto.getDurationDays();
+        TimeDto oldTime = dto.getDurationTime();
+        if (Objects.equals(oldDays, days) && Objects.equals(oldTime, time)) return true;
+        boolean oldNull = oldDays == null && oldTime == null;
+        boolean newNull = days == null && time == null;
+        StateChangeType type;
+        if (oldNull && !newNull) type = StateChangeType.DURATION_SET;
+        else if (!oldNull && newNull) type = StateChangeType.DURATION_CLEARED;
+        else type = StateChangeType.DURATION_CHANGED;
         dto.setDurationDays(days);
         dto.setDurationTime(time);
+        dto.addStatusChange(new StatusChangeDto(now(), type));
         return true;
     }
 
@@ -131,6 +169,7 @@ public class MemoryElectionsService implements ElectionsService {
         int nextId = dto.getCandidates().stream().mapToInt(CandidateDto::getId).max().orElse(0) + 1;
         CandidateDto c = new CandidateDto(nextId, name);
         dto.addCandidate(c);
+        dto.addStatusChange(new StatusChangeDto(now(), StateChangeType.CANDIDATE_ADDED));
         return Optional.of(wrapCandidate(c));
     }
 
@@ -138,7 +177,9 @@ public class MemoryElectionsService implements ElectionsService {
     public synchronized boolean removeCandidate(int electionId, int candidateId) {
         ElectionDto dto = elections.get(electionId);
         if (dto == null) return false;
-        return dto.removeCandidate(candidateId);
+        boolean removed = dto.removeCandidate(candidateId);
+        if (removed) dto.addStatusChange(new StatusChangeDto(now(), StateChangeType.CANDIDATE_REMOVED));
+        return removed;
     }
 
     @Override
@@ -147,6 +188,7 @@ public class MemoryElectionsService implements ElectionsService {
         if (dto == null) return Optional.empty();
         PollDto p = new PollDto(world, x, y, z);
         dto.addPoll(p);
+        dto.addStatusChange(new StatusChangeDto(now(), StateChangeType.POLL_ADDED));
         return Optional.of(wrapPoll(p));
     }
 
@@ -154,7 +196,9 @@ public class MemoryElectionsService implements ElectionsService {
     public synchronized boolean removePoll(int electionId, String world, int x, int y, int z) {
         ElectionDto dto = elections.get(electionId);
         if (dto == null) return false;
-        return dto.removePoll(new PollDto(world, x, y, z));
+        boolean removed = dto.removePoll(new PollDto(world, x, y, z));
+        if (removed) dto.addStatusChange(new StatusChangeDto(now(), StateChangeType.POLL_REMOVED));
+        return removed;
     }
 
     @Override
@@ -205,6 +249,9 @@ public class MemoryElectionsService implements ElectionsService {
         if (unique.size() > allowed.size()) return false;
 
         BallotDto b = new BallotDto(nextBallotId(dto), dto.getId(), voterId);
+        // attach voter details in the ballot for future export if needed
+        VoterDto voter = dto.getVotersById().get(voterId);
+        if (voter != null) b.setVoter(voter);
         b.clearSelections();
         unique.forEach(b::addSelection);
         b.setSubmittedAt(now());
@@ -228,11 +275,45 @@ public class MemoryElectionsService implements ElectionsService {
         if (!allowed.containsAll(unique)) return false;
 
         BallotDto b = new BallotDto(nextBallotId(dto), dto.getId(), voterId);
+        // attach voter details in the ballot for future export if needed
+        VoterDto voter = dto.getVotersById().get(voterId);
+        if (voter != null) b.setVoter(voter);
         b.clearSelections();
         unique.forEach(b::addSelection);
         b.setSubmittedAt(now());
         dto.appendBallot(b);
         return true;
+    }
+
+    @Override
+    public synchronized boolean markExported(int electionId) {
+        ElectionDto dto = elections.get(electionId);
+        if (dto == null) return false;
+        dto.addStatusChange(new StatusChangeDto(now(), StateChangeType.EXPORTED));
+        return true;
+    }
+
+    @Override
+    public synchronized boolean setCandidateHeadItemBytes(int electionId, int candidateId, byte[] data) {
+        ElectionDto dto = elections.get(electionId);
+        if (dto == null) return false;
+        for (CandidateDto candidate : dto.getCandidates()) {
+            if (candidate.getId() == candidateId) {
+                candidate.setHeadItemBytes(data);
+                return true;
+            }
+        }
+        return false;
+    }
+
+    @Override
+    public synchronized byte[] getCandidateHeadItemBytes(int electionId, int candidateId) {
+        ElectionDto dto = elections.get(electionId);
+        if (dto == null) return null;
+        for (CandidateDto candidate : dto.getCandidates()) {
+            if (candidate.getId() == candidateId) return candidate.getHeadItemBytes();
+        }
+        return null;
     }
 
     private static boolean hasSubmitted(ElectionDto dto, int voterId) {

@@ -17,7 +17,10 @@ public class ElectionDto implements Dto {
     private final List<CandidateDto> candidates = new ArrayList<>();
     private final List<PollDto> polls = new ArrayList<>();
     private final List<BallotDto> ballots = new ArrayList<>();
-    private final Map<Integer, VoterDto> votersById = new LinkedHashMap<>();
+    /**
+     * Internal voter registry. Marked transient to exclude from export JSON; voters can be embedded per-ballot when needed.
+     */
+    private final transient Map<Integer, VoterDto> votersById = new LinkedHashMap<>();
     private final List<StatusChangeDto> statusChanges = new ArrayList<>();
     /** When null, the election does not auto-close. */
     private TimeStampDto closesAt;

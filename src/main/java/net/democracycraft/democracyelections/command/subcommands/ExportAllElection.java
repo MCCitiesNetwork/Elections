@@ -3,7 +3,7 @@ package net.democracycraft.democracyelections.command.subcommands;
 import net.democracycraft.democracyelections.api.model.Election;
 import net.democracycraft.democracyelections.command.framework.CommandContext;
 import net.democracycraft.democracyelections.command.framework.Subcommand;
-import net.democracycraft.democracyelections.util.bytebin.BytebinClient;
+import net.democracycraft.democracyelections.util.bytebin.ExportClient;
 
 import java.util.List;
 import java.util.Optional;
@@ -21,12 +21,13 @@ public class ExportAllElection implements Subcommand {
     @Override
     public void execute(CommandContext ctx) {
         int id = ctx.requireInt(0, "id");
-        Optional<Election> opt = ctx.svc().getElection(id);
+        Optional<Election> opt = ctx.electionsService().getElection(id);
         if (opt.isEmpty()) { ctx.sender().sendMessage("Election not found."); return; }
         String json = ExportElection.buildJson(opt.get(), true, ctx);
         try {
-            String url = BytebinClient.uploadJson(json);
+            String url = ExportClient.uploadJson(json);
             ctx.sender().sendMessage("Exported (admin) to: " + url);
+            ctx.electionsService().markExported(id);
         } catch (Exception ex) {
             ctx.sender().sendMessage("Export failed: " + ex.getMessage());
         }
@@ -38,4 +39,3 @@ public class ExportAllElection implements Subcommand {
         return List.of();
     }
 }
-

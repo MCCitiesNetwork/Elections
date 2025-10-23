@@ -18,6 +18,7 @@ repositories {
 dependencies {
     compileOnly("io.papermc.paper:paper-api:1.21.8-R0.1-SNAPSHOT")
     implementation(kotlin("stdlib-jdk8"))
+    implementation("com.google.code.gson:gson:2.11.0")
 }
 
 tasks {

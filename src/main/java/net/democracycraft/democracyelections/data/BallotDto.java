@@ -12,6 +12,8 @@ public class BallotDto implements Dto {
     private final int id;
     private final int electionId;
     private final int voterId;
+    /** Optional voter details to embed when exporting (null to preserve anonymity). */
+    private VoterDto voter;
     /** Candidate IDs; for PREFERENTIAL voting the order is significant. */
     private final List<Integer> selections;
     /** When non-null, indicates the ballot has been submitted at that timestamp. */
@@ -27,6 +29,12 @@ public class BallotDto implements Dto {
     public int getId() { return id; }
     public int getElectionId() { return electionId; }
     public int getVoterId() { return voterId; }
+
+    /**
+     * Optional embedded voter details. When null, exports remain anonymous.
+     */
+    public VoterDto getVoter() { return voter; }
+    public void setVoter(VoterDto voter) { this.voter = voter; }
 
     public List<Integer> getSelections() { return Collections.unmodifiableList(selections); }
     public void clearSelections() { selections.clear(); }

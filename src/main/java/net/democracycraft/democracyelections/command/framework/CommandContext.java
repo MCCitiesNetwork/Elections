@@ -10,16 +10,16 @@ import java.util.*;
 
 public record CommandContext(
         DemocracyElections plugin,
-        ElectionsService svc,
+        ElectionsService electionsService,
         CommandSender sender,
         String label,
         String[] args
 ) {
 
     public CommandContext next() {
-        if (args.length <= 1) return new CommandContext(plugin, svc, sender, label, new String[0]);
+        if (args.length <= 1) return new CommandContext(plugin, electionsService, sender, label, new String[0]);
         String[] rest = Arrays.copyOfRange(args, 1, args.length);
-        return new CommandContext(plugin, svc, sender, label, rest);
+        return new CommandContext(plugin, electionsService, sender, label, rest);
     }
 
     public boolean isPlayer() {
@@ -64,7 +64,7 @@ public record CommandContext(
     }
 
     public List<String> electionIds() {
-        return svc.listElections().stream().map(e -> Integer.toString(e.getId())).toList();
+        return electionsService.listElections().stream().map(e -> Integer.toString(e.getId())).toList();
     }
 
     public List<String> filter(List<String> list, String prefix) {

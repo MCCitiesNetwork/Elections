@@ -20,7 +20,7 @@ public class OpenManager implements Subcommand {
     public void execute(CommandContext ctx) {
         if (!ctx.isPlayer()) { ctx.sender().sendMessage("This command must be run in-game."); return; }
         var player = ctx.asPlayer();
-        var menu = new ElectionListMenu(player, ctx.svc());
+        var menu = new ElectionListMenu(player, ctx.electionsService());
         menu.open();
     }
 }
