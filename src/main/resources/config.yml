@@ -7,7 +7,7 @@ mysql:
   useSSL: false
 
 elections:
-  autoCloseSweepSecods: 60
+  autoCloseSweepSeconds: 60
   deletedPurgeSweepSeconds: 3600
   deletedRetentionDays: 30
 
