@@ -1,22 +1,24 @@
-name: DemocracyElections
+name: Elections
 version: '${version}'
-main: net.democracycraft.democracyelections.DemocracyElections
+main: net.democracycraft.elections.Elections
 api-version: '1.21'
 commands:
   democracyelections:
-    description: Elections commands (open manager, export data)
+    description: Elections commands (manager UI, export data)
     usage: /<command>
     aliases: [elections]
     permission: elections.user
 permissions:
   elections.admin:
-    description: Grants all DemocracyElections permissions
+    description: Grants all Elections permissions
     default: op
     children:
       elections.manager: true
       elections.user: true
+      elections.paste: true
+      elections.health: true
   elections.manager:
-    description: Manage elections (create, edit, open/close)
+    description: Manage elections (open manager, create, edit, open/close)
     default: op
     children:
       elections.user: true
@@ -26,13 +28,9 @@ permissions:
   elections.permissions.reload:
     description: Reload the permission nodes configuration
     default: op
-  democracyelections.admin:
-    description: Legacy admin permission (alias)
+  elections.paste:
+    description: Manage paste operations (delete)
     default: op
-    children:
-      elections.admin: true
-  democracyelections.manager:
-    description: Legacy manager permission (alias)
+  elections.health:
+    description: View elections health stats
     default: op
-    children:
-      elections.manager: true

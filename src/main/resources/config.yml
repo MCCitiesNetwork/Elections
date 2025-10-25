@@ -1,0 +1,17 @@
+mysql:
+  host: localhost
+  port: 3306
+  database: democracy_elections
+  user: root
+  password: ""
+  useSSL: false
+
+elections:
+  autoCloseSweepSecods: 60
+  deletedPurgeSweepSeconds: 3600
+  deletedRetentionDays: 30
+
+pastegg:
+  apiBase: https://api.paste.gg
+  viewBase: https://paste.gg/p/anonymous/
+  apiKey: ""

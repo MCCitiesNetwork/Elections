@@ -1,0 +1,141 @@
+package net.democracycraft.elections.ui.vote;
+
+import io.papermc.paper.dialog.Dialog;
+import io.papermc.paper.registry.data.dialog.DialogBase;
+import io.papermc.paper.registry.data.dialog.body.DialogBody;
+import io.papermc.paper.registry.data.dialog.input.DialogInput;
+import net.democracycraft.elections.Elections;
+import net.democracycraft.elections.api.model.Candidate;
+import net.democracycraft.elections.api.model.Election;
+import net.democracycraft.elections.api.service.ElectionsService;
+import net.democracycraft.elections.ui.ChildMenuImp;
+import net.democracycraft.elections.api.ui.ParentMenu;
+import net.democracycraft.elections.util.HeadUtil;
+import net.democracycraft.elections.ui.dialog.AutoDialog;
+import net.democracycraft.elections.ui.common.LoadingMenu;
+import net.kyori.adventure.text.Component;
+import org.bukkit.entity.Player;
+import org.bukkit.inventory.ItemStack;
+import org.bukkit.scheduler.BukkitRunnable;
+
+import java.io.Serializable;
+import java.time.Duration;
+import java.util.ArrayList;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Optional;
+
+/**
+ * Ballot UI for Block voting. Voter must select exactly minimumVotes candidates using boolean inputs.
+ * All texts are configurable via data/menus/BlockBallotMenu.yml with placeholders.
+ */
+public class BlockBallotMenu extends ChildMenuImp {
+
+    private final ElectionsService electionsService;
+    private final int electionId;
+
+    public BlockBallotMenu(Player player, ParentMenu parent, ElectionsService electionsService, int electionId) {
+        super(player, parent, "ballot_block_" + electionId);
+        this.electionsService = electionsService;
+        this.electionId = electionId;
+        this.setDialog(build());
+    }
+
+    /** Config DTO for this menu. */
+    public static class Config implements Serializable {
+        public String titleFallback = "<gold><bold>Block Ballot</bold></gold>";
+        public String notFound = "<red><bold>Election not found.</bold></red>";
+        public String titleFormat = "<gold><bold>%election_title% Ballot (Block)</bold></gold>";
+        public String minimumLabel = "<aqua>Minimum required: </aqua>";
+        public String checkExactly = "<gray>Check exactly <white><bold>%min%</bold></white> candidates.</gray>";
+        public String submitBtn = "<green><bold>Submit</bold></green>";
+        public String mustSelectExactly = "<red><bold>You must select exactly %min% candidates.</bold></red>";
+        public String submissionFailed = "<red><bold>Submission failed. Are you eligible or already voted?</bold></red>";
+        public String submitted = "<green><bold>Ballot submitted.</bold></green>";
+        public String clearBtn = "<yellow>Clear</yellow>";
+        public String backBtn = "<red><bold>Back</bold></red>";
+        public String yamlHeader = "BlockBallotMenu configuration. Placeholders: %election_title%, %min%, %x%, %y%, %z%.";
+        public Config() {}
+    }
+
+    private Dialog build() {
+        Optional<Election> optionalElection = electionsService.getElectionSnapshot(electionId);
+        AutoDialog.Builder dialogBuilder = getAutoDialogBuilder();
+        var menuYml = getOrCreateMenuYml(Config.class, getMenuConfigFileName(), new Config().yamlHeader);
+        Config config = menuYml.loadOrCreate(Config::new);
+
+        if (optionalElection.isEmpty()) {
+            dialogBuilder.title(miniMessage(config.titleFallback));
+            dialogBuilder.addBody(DialogBody.plainMessage(miniMessage(config.notFound)));
+            return dialogBuilder.build();
+        }
+        Election election = optionalElection.get();
+        int min = Math.max(1, election.getMinimumVotes());
+
+        Map<String, String> placeholders = Map.of(
+                "%election_title%", election.getTitle(),
+                "%min%", String.valueOf(min)
+        );
+
+        dialogBuilder.title(miniMessage(config.titleFormat, placeholders));
+        dialogBuilder.canCloseWithEscape(true);
+        dialogBuilder.afterAction(DialogBase.DialogAfterAction.CLOSE);
+
+        dialogBuilder.addBody(DialogBody.plainMessage(Component.newline()
+                .append(miniMessage(config.minimumLabel, placeholders)).append(miniMessage("<gray>" + min + "</gray>"))
+                .appendNewline().append(miniMessage(config.checkExactly, placeholders))
+        ));
+
+        List<Candidate> candidates = election.getCandidates();
+        Map<String, Integer> keyToId = new LinkedHashMap<>();
+        for (Candidate candidate : candidates) {
+            String key = keyFor(candidate.getId());
+            keyToId.put(key, candidate.getId());
+            HeadUtil.updateHeadItemBytesAsync(electionsService, electionId, candidate.getId(), candidate.getName());
+            ItemStack headItem = HeadUtil.headFromBytesOrName(electionsService, electionId, candidate.getId(), candidate.getName());
+            dialogBuilder.addBody(DialogBody.item(headItem).showTooltip(true).build());
+            dialogBuilder.addInput(DialogInput.bool(key, miniMessage("<gray>" + candidate.getName() + "</gray>")).initial(false).build());
+        }
+
+        dialogBuilder.buttonWithPlayer(miniMessage(config.submitBtn, placeholders), null, Duration.ofMinutes(5), 1, (playerActor, response) -> {
+            List<Integer> picks = new ArrayList<>();
+            for (Map.Entry<String, Integer> entry : keyToId.entrySet()) {
+                Boolean selected = response.getBoolean(entry.getKey());
+                if (selected != null && selected) picks.add(entry.getValue());
+            }
+            if (picks.size() != min) {
+                playerActor.sendMessage(miniMessage(applyPlaceholders(config.mustSelectExactly, Map.of("%min%", String.valueOf(min))), null));
+                new BlockBallotMenu(playerActor, getParentMenu(), electionsService, electionId).open();
+                return;
+            }
+            new LoadingMenu(playerActor, getParentMenu()).open();
+            // Offload voter registration and ballot submission to async thread to avoid blocking the server tick.
+            new BukkitRunnable() {
+                @Override
+                public void run() {
+                    int voterId = electionsService.registerVoterAsync(electionId, playerActor.getName()).join().getId();
+                    boolean success = electionsService.submitBlockBallotAsync(electionId, voterId, picks).join();
+                    new BukkitRunnable() {
+                        @Override
+                        public void run() {
+                            if (!success) {
+                                playerActor.sendMessage(miniMessage(config.submissionFailed));
+                                new BlockBallotMenu(playerActor, getParentMenu(), electionsService, electionId).open();
+                            } else {
+                                playerActor.sendMessage(miniMessage(config.submitted));
+                            }
+                        }
+                    }.runTask(Elections.getInstance());
+                }
+            }.runTaskAsynchronously(Elections.getInstance());
+        });
+
+        dialogBuilder.button(miniMessage(config.clearBtn, placeholders), context -> new BlockBallotMenu(context.player(), getParentMenu(), electionsService, electionId).open());
+        dialogBuilder.button(miniMessage(config.backBtn, placeholders), context -> getParentMenu().open());
+
+        return dialogBuilder.build();
+    }
+
+    private String keyFor(int candidateId) { return "CAND_" + candidateId; }
+}
