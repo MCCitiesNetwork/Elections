@@ -3,4 +3,4 @@ pluginManagement {
         kotlin("jvm") version "2.2.0"
     }
 }
-rootProject.name = "DemocracyElections"
+rootProject.name = "Elections"
