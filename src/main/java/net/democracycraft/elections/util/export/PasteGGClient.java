@@ -1,4 +1,4 @@
-package net.democracycraft.elections.util.paste;
+package net.democracycraft.elections.util.export;
 
 import net.democracycraft.elections.Elections;
 import static net.democracycraft.elections.util.config.ConfigPaths.PASTEGG_API_BASE;

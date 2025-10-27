@@ -6,17 +6,59 @@ import io.papermc.paper.registry.data.dialog.body.DialogBody;
 import net.democracycraft.elections.api.ui.ParentMenu;
 import net.democracycraft.elections.ui.ChildMenuImp;
 import net.democracycraft.elections.ui.dialog.AutoDialog;
+import net.kyori.adventure.text.Component;
 import org.bukkit.entity.Player;
 
 import java.io.Serializable;
 
 /**
  * Simple loading screen child menu with MiniMessage-configurable texts.
+ * Now supports providing a custom title and message per usage site.
  */
 public class LoadingMenu extends ChildMenuImp {
 
+    private final Component titleOverride;
+    private final Component messageOverride;
+
+    /**
+     * Creates a LoadingMenu using YAML-configured title and message.
+     *
+     * @param player the player opening the menu
+     * @param parent the parent menu
+     */
     public LoadingMenu(Player player, ParentMenu parent) {
         super(player, parent, "loading");
+        this.titleOverride = null;
+        this.messageOverride = null;
+        this.setDialog(build());
+    }
+
+    /**
+     * Creates a LoadingMenu using a custom title, and YAML-configured message.
+     *
+     * @param player the player opening the menu
+     * @param parent the parent menu
+     * @param title custom pre-built Component title
+     */
+    public LoadingMenu(Player player, ParentMenu parent, Component title) {
+        super(player, parent, "loading");
+        this.titleOverride = title;
+        this.messageOverride = null;
+        this.setDialog(build());
+    }
+
+    /**
+     * Creates a LoadingMenu using a custom title and custom message.
+     *
+     * @param player the player opening the menu
+     * @param parent the parent menu
+     * @param title custom pre-built Component title
+     * @param message custom pre-built Component message shown in the body
+     */
+    public LoadingMenu(Player player, ParentMenu parent, Component title, Component message) {
+        super(player, parent, "loading");
+        this.titleOverride = title;
+        this.messageOverride = message;
         this.setDialog(build());
     }
 
@@ -31,11 +73,13 @@ public class LoadingMenu extends ChildMenuImp {
         AutoDialog.Builder dialogBuilder = getAutoDialogBuilder();
         var menuYml = getOrCreateMenuYml(Config.class, getMenuConfigFileName(), new Config().yamlHeader);
         Config config = menuYml.loadOrCreate(Config::new);
-        dialogBuilder.title(miniMessage(config.title));
+        // Title: use override if provided
+        dialogBuilder.title(titleOverride != null ? titleOverride : miniMessage(config.title));
         dialogBuilder.canCloseWithEscape(true);
         dialogBuilder.afterAction(DialogBase.DialogAfterAction.CLOSE);
-        dialogBuilder.addBody(DialogBody.plainMessage(miniMessage(config.message)));
+        // Message body: use override if provided
+        Component body = messageOverride != null ? messageOverride : miniMessage(config.message);
+        dialogBuilder.addBody(DialogBody.plainMessage(body));
         return dialogBuilder.build();
     }
 }
-

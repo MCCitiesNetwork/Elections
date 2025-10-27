@@ -12,6 +12,8 @@ import net.democracycraft.elections.data.VotingSystem;
 import net.democracycraft.elections.ui.ChildMenuImp;
 import net.democracycraft.elections.ui.dialog.AutoDialog;
 import net.democracycraft.elections.ui.common.LoadingMenu;
+import net.democracycraft.elections.util.sound.SoundHelper;
+import net.democracycraft.elections.util.sound.SoundSpec;
 import net.kyori.adventure.text.Component;
 import org.bukkit.entity.Player;
 import org.bukkit.scheduler.BukkitRunnable;
@@ -65,6 +67,12 @@ public class CandidateListMenu extends ChildMenuImp {
         public String duplicateRank = "<red><bold>Duplicate rank: %rank%</bold></red>";
         public String selectAtLeast = "<red><bold>Select at least %min% preferences.</bold></red>";
         public String yamlHeader = "CandidateListMenu configuration. Placeholders: %election_title%, %min%, %rank%.";
+        /** Loading dialog title shown while submitting. */
+        public String loadingTitle = "<gold><bold>Submitting</bold></gold>";
+        /** Loading dialog message shown while submitting. */
+        public String loadingMessage = "<gray><italic>Submitting your ballot…</italic></gray>";
+        /** Sound to play when submission succeeds. */
+        public SoundSpec successSound = new SoundSpec();
         public Config() {}
     }
 
@@ -125,7 +133,7 @@ public class CandidateListMenu extends ChildMenuImp {
                 List<Integer> pickedCandidates = session.getSelected();
                 int minimumRequired = Math.max(1, election.getMinimumVotes());
                 if (pickedCandidates.size() != minimumRequired) { playerActor.sendMessage(miniMessage(applyPlaceholders(config.mustSelectExactly, Map.of("%min%", String.valueOf(minimumRequired))), null)); new CandidateListMenu(playerActor, getParentMenu(), electionsService, electionId, page).open(); return; }
-                new LoadingMenu(playerActor, getParentMenu()).open();
+                new LoadingMenu(playerActor, getParentMenu(), miniMessage(config.loadingTitle, placeholders), miniMessage(config.loadingMessage, placeholders)).open();
                 new BukkitRunnable() {
                     @Override
                     public void run() {
@@ -135,7 +143,7 @@ public class CandidateListMenu extends ChildMenuImp {
                             @Override
                             public void run() {
                                 if (!submissionOk) { playerActor.sendMessage(miniMessage(config.submissionFailed)); new CandidateListMenu(playerActor, getParentMenu(), electionsService, electionId, page).open(); }
-                                else { playerActor.sendMessage(miniMessage(config.submitted)); BallotSessions.clear(playerActor.getUniqueId(), electionId); }
+                                else { playerActor.sendMessage(miniMessage(config.submitted)); SoundHelper.play(playerActor, config.successSound); BallotSessions.clear(playerActor.getUniqueId(), electionId); }
                             }
                         }.runTask(Elections.getInstance());
                     }
@@ -156,7 +164,7 @@ public class CandidateListMenu extends ChildMenuImp {
                 entries.sort(java.util.Comparator.comparingInt(Map.Entry::getValue));
                 List<Integer> orderedCandidateIds = new ArrayList<>();
                 for (Map.Entry<Integer,Integer> entry : entries) orderedCandidateIds.add(entry.getKey());
-                new LoadingMenu(playerActor, getParentMenu()).open();
+                new LoadingMenu(playerActor, getParentMenu(), miniMessage(config.loadingTitle, placeholders), miniMessage(config.loadingMessage, placeholders)).open();
                 new BukkitRunnable() {
                     @Override
                     public void run() {
@@ -166,7 +174,7 @@ public class CandidateListMenu extends ChildMenuImp {
                             @Override
                             public void run() {
                                 if (!submissionOk) { playerActor.sendMessage(miniMessage(config.submissionFailed)); new CandidateListMenu(playerActor, getParentMenu(), electionsService, electionId, page).open(); }
-                                else { playerActor.sendMessage(miniMessage(config.submitted)); BallotSessions.clear(playerActor.getUniqueId(), electionId); }
+                                else { playerActor.sendMessage(miniMessage(config.submitted)); SoundHelper.play(playerActor, config.successSound); BallotSessions.clear(playerActor.getUniqueId(), electionId); }
                             }
                         }.runTask(Elections.getInstance());
                     }

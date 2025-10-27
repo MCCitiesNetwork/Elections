@@ -13,6 +13,8 @@ import net.democracycraft.elections.api.ui.ParentMenu;
 import net.democracycraft.elections.util.HeadUtil;
 import net.democracycraft.elections.ui.dialog.AutoDialog;
 import net.democracycraft.elections.ui.common.LoadingMenu;
+import net.democracycraft.elections.util.sound.SoundHelper;
+import net.democracycraft.elections.util.sound.SoundSpec;
 import net.kyori.adventure.text.Component;
 import org.bukkit.entity.Player;
 import org.bukkit.inventory.ItemStack;
@@ -56,6 +58,12 @@ public class BlockBallotMenu extends ChildMenuImp {
         public String clearBtn = "<yellow>Clear</yellow>";
         public String backBtn = "<red><bold>Back</bold></red>";
         public String yamlHeader = "BlockBallotMenu configuration. Placeholders: %election_title%, %min%, %x%, %y%, %z%.";
+        /** Loading dialog title shown while submitting. */
+        public String loadingTitle = "<gold><bold>Submitting</bold></gold>";
+        /** Loading dialog message shown while submitting. */
+        public String loadingMessage = "<gray><italic>Submitting your ballot…</italic></gray>";
+        /** Sound to play when submission succeeds. */
+        public SoundSpec successSound = new SoundSpec();
         public Config() {}
     }
 
@@ -109,7 +117,7 @@ public class BlockBallotMenu extends ChildMenuImp {
                 new BlockBallotMenu(playerActor, getParentMenu(), electionsService, electionId).open();
                 return;
             }
-            new LoadingMenu(playerActor, getParentMenu()).open();
+            new LoadingMenu(playerActor, getParentMenu(), miniMessage(config.loadingTitle, placeholders), miniMessage(config.loadingMessage, placeholders)).open();
             // Offload voter registration and ballot submission to async thread to avoid blocking the server tick.
             new BukkitRunnable() {
                 @Override
@@ -119,11 +127,14 @@ public class BlockBallotMenu extends ChildMenuImp {
                     new BukkitRunnable() {
                         @Override
                         public void run() {
+                            // Close loading dialog after async completes
+                            playerActor.closeDialog();
                             if (!success) {
                                 playerActor.sendMessage(miniMessage(config.submissionFailed));
                                 new BlockBallotMenu(playerActor, getParentMenu(), electionsService, electionId).open();
                             } else {
                                 playerActor.sendMessage(miniMessage(config.submitted));
+                                SoundHelper.play(playerActor, config.successSound);
                             }
                         }
                     }.runTask(Elections.getInstance());

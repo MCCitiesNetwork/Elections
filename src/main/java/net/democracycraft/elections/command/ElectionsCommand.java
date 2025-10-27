@@ -67,13 +67,13 @@ public class ElectionsCommand implements CommandExecutor, TabCompleter {
     public @Nullable List<String> onTabComplete(@NotNull CommandSender sender, @NotNull Command command, @NotNull String alias, @NotNull String[] args) {
         if (args.length <= 1) {
             List<String> base = new ArrayList<>();
-            // export base is available to users
-            base.add("export");
-            // manager/health/reloadperms for managers/admins
-            if (sender.hasPermission("democracyelections.manager") || sender.hasPermission("elections.manager") || sender.hasPermission("elections.admin") || sender.hasPermission("democracyelections.admin")) {
-                base.add("manager");
-                base.add("health");
-                base.add("reloadperms");
+            // Show only subcommands the sender has permission for; prefer the first alias of each
+            Set<Subcommand> uniques = new LinkedHashSet<>(registry.values());
+            for (Subcommand sub : uniques) {
+                if (sub.hasPermission(sender)) {
+                    List<String> names = sub.names();
+                    if (!names.isEmpty()) base.add(names.getFirst());
+                }
             }
             String prefix = args.length == 0 ? "" : args[0].toLowerCase(Locale.ROOT);
             return base.stream().filter(s -> s.startsWith(prefix)).sorted().toList();

@@ -3,6 +3,7 @@ package net.democracycraft.elections.api.model;
 import net.democracycraft.elections.data.*;
 
 import java.util.List;
+import java.util.function.Function;
 
 /**
  * Read-only view of an election and its current state.
@@ -50,4 +51,10 @@ public interface Election {
 
     /** Chronological audit log of status changes. */
     List<StatusChangeDto> getStatusChanges();
+
+    ElectionDto toDto();
+
+    ElectionDto toDtoWithNamedBallots(Function<Integer, String> voterNameProvider);
+
+    String toJson(boolean includeVoterInBallots, Function<Integer, String> voterNameProvider);
 }

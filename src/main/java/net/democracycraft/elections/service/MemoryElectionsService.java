@@ -1,13 +1,17 @@
 package net.democracycraft.elections.service;
 
+import com.google.gson.Gson;
+import com.google.gson.GsonBuilder;
 import net.democracycraft.elections.api.model.*;
 import net.democracycraft.elections.api.service.ElectionsService;
 import net.democracycraft.elections.data.BallotMode;
 import net.democracycraft.elections.data.*;
+import org.jetbrains.annotations.NotNull;
 
 import java.util.*;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.function.Function;
 import java.util.stream.Collectors;
 
 import static net.democracycraft.elections.command.framework.CommandContext.tsToString;
@@ -375,6 +379,13 @@ public class MemoryElectionsService implements ElectionsService {
     private Voter wrapVoter(VoterDto dto) { return new VoterView(dto); }
 
     private class ElectionView implements Election {
+
+
+        private static final Gson GSON = new GsonBuilder()
+                .disableHtmlEscaping()
+                .setPrettyPrinting()
+                .create();
+
         private final ElectionDto dto;
         ElectionView(ElectionDto dto) { this.dto = dto; }
         @Override public int getId() { return dto.getId(); }
@@ -393,6 +404,70 @@ public class MemoryElectionsService implements ElectionsService {
         @Override public TimeDto getDurationTime() { return dto.getDurationTime(); }
         @Override public BallotMode getBallotMode() { return dto.getBallotMode(); }
         @Override public List<StatusChangeDto> getStatusChanges() { return dto.getStatusChanges(); }
+
+        private ElectionDto getSimpleDto() {
+            ElectionDto electionDto = new ElectionDto(
+                this.getId(),
+                this.getTitle(),
+                this.getSystem(),
+                this.getMinimumVotes(),
+                this.getRequirements(),
+                this.getCreatedAt()
+            );
+
+            electionDto.setStatus(this.getStatus());
+            electionDto.setClosesAt(this.getClosesAt());
+            electionDto.setDurationDays(this.getDurationDays());
+            electionDto.setDurationTime(this.getDurationTime());
+
+            for (Candidate c : this.getCandidates()) {
+                electionDto.addCandidate(new CandidateDto(c.getId(), c.getName()));
+            }
+            this.getPolls().forEach(p -> electionDto.addPoll(new PollDto(p.getWorld(), p.getX(), p.getY(), p.getZ())));
+
+            this.getStatusChanges().forEach(electionDto::addStatusChange);
+
+            return electionDto;
+        }
+
+        @Override
+        public ElectionDto toDto() {
+            ElectionDto electionDto = getSimpleDto();
+
+            for (Vote b : this.getBallots()) {
+                BallotDto bd = new BallotDto(b.getId(), b.getElectionId(), b.getVoterId());
+                b.getSelections().forEach(bd::addSelection);
+                bd.setSubmittedAt(b.getSubmittedAt());
+                electionDto.appendBallot(bd);
+            }
+
+            return electionDto;
+
+        }
+
+        @Override
+        public ElectionDto toDtoWithNamedBallots(@NotNull Function<Integer, String> voterNameProvider) {
+            ElectionDto electionDto = getSimpleDto();
+
+            for (Vote b : this.getBallots()) {
+                BallotDto bd = new BallotDto(b.getId(), b.getElectionId(), b.getVoterId());
+                b.getSelections().forEach(bd::addSelection);
+                bd.setSubmittedAt(b.getSubmittedAt());
+                String name = voterNameProvider.apply(b.getVoterId());
+                if (name != null) bd.setVoter(new VoterDto(b.getVoterId(), name));
+
+                electionDto.appendBallot(bd);
+            }
+
+            return electionDto;
+        }
+
+        @Override
+        public String toJson(boolean includeVoterInBallots, Function<Integer, String> voterNameProvider) {
+            ElectionDto electionDto = includeVoterInBallots ? this.toDtoWithNamedBallots(voterNameProvider) : this.toDto();
+
+            return GSON.toJson(electionDto);
+        }
     }
 
     private record CandidateView(CandidateDto dto) implements Candidate {

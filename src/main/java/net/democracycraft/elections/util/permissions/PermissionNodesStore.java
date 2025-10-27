@@ -3,7 +3,7 @@ package net.democracycraft.elections.util.permissions;
 import net.democracycraft.elections.util.permissions.data.PermissionNodesConfig;
 import net.democracycraft.elections.util.permissions.data.PermissionNodesDto;
 import net.democracycraft.elections.util.yml.AutoYML;
-import net.democracycraft.elections.util.yml.DataFolder;
+import net.democracycraft.elections.util.config.DataFolder;
 
 import java.util.Collections;
 import java.util.List;

@@ -13,6 +13,8 @@ import net.democracycraft.elections.api.ui.ParentMenu;
 import net.democracycraft.elections.ui.ChildMenuImp;
 import net.democracycraft.elections.ui.dialog.AutoDialog;
 import net.democracycraft.elections.ui.common.LoadingMenu;
+import net.democracycraft.elections.util.sound.SoundHelper;
+import net.democracycraft.elections.util.sound.SoundSpec;
 import net.kyori.adventure.text.Component;
 import org.bukkit.entity.Player;
 import org.bukkit.scheduler.BukkitRunnable;
@@ -60,6 +62,12 @@ public class SimplePreferentialBallotMenu extends ChildMenuImp {
         public String duplicateRank = "<red><bold>Duplicate rank: %rank%</bold></red>";
         public String selectAtLeast = "<red><bold>Select at least %min% preferences.</bold></red>";
         public String yamlHeader = "SimplePreferentialBallotMenu configuration. Placeholders: %election_title%, %min%, %candidate_name%, %rank%.";
+        /** Loading dialog title shown while submitting. */
+        public String loadingTitle = "<gold><bold>Submitting</bold></gold>";
+        /** Loading dialog message shown while submitting. */
+        public String loadingMessage = "<gray><italic>Submitting your ballot…</italic></gray>";
+        /** Sound to play when submission succeeds. */
+        public SoundSpec successSound = new SoundSpec();
         public Config() {}
     }
 
@@ -132,7 +140,7 @@ public class SimplePreferentialBallotMenu extends ChildMenuImp {
             entries.sort(java.util.Comparator.comparingInt(Map.Entry::getValue));
             List<Integer> orderedCandidateIds = new ArrayList<>();
             for (Map.Entry<Integer,Integer> entry : entries) orderedCandidateIds.add(entry.getKey());
-            new LoadingMenu(playerActor, getParentMenu()).open();
+            new LoadingMenu(playerActor, getParentMenu(), miniMessage(config.loadingTitle, ph), miniMessage(config.loadingMessage, ph)).open();
             new BukkitRunnable() {
                 @Override
                 public void run() {
@@ -141,8 +149,10 @@ public class SimplePreferentialBallotMenu extends ChildMenuImp {
                     new BukkitRunnable() {
                         @Override
                         public void run() {
+                            // Close loading dialog after async completes
+                            playerActor.closeDialog();
                             if (!ok) { playerActor.sendMessage(miniMessage(config.submissionFailed)); new SimplePreferentialBallotMenu(playerActor, getParentMenu(), electionsService, electionId).open(); }
-                            else { playerActor.sendMessage(miniMessage(config.submitted)); BallotSessions.clear(playerActor.getUniqueId(), electionId); }
+                            else { playerActor.sendMessage(miniMessage(config.submitted)); SoundHelper.play(playerActor, config.successSound); BallotSessions.clear(playerActor.getUniqueId(), electionId); }
                         }
                     }.runTask(Elections.getInstance());
                 }

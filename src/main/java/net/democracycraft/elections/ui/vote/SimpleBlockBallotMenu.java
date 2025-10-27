@@ -13,6 +13,8 @@ import net.democracycraft.elections.api.ui.ParentMenu;
 import net.democracycraft.elections.ui.ChildMenuImp;
 import net.democracycraft.elections.ui.dialog.AutoDialog;
 import net.democracycraft.elections.ui.common.LoadingMenu;
+import net.democracycraft.elections.util.sound.SoundHelper;
+import net.democracycraft.elections.util.sound.SoundSpec;
 import net.kyori.adventure.text.Component;
 import org.bukkit.entity.Player;
 import org.bukkit.scheduler.BukkitRunnable;
@@ -59,6 +61,12 @@ public class SimpleBlockBallotMenu extends ChildMenuImp {
         public String submissionFailed = "<red><bold>Submission failed. Are you eligible or already voted?</bold></red>";
         public String submitted = "<green><bold>Ballot submitted.</bold></green>";
         public String yamlHeader = "SimpleBlockBallotMenu configuration. Placeholders: %election_title%, %min%, %candidate_name%.";
+        /** Loading dialog title shown while submitting. */
+        public String loadingTitle = "<gold><bold>Submitting</bold></gold>";
+        /** Loading dialog message shown while submitting. */
+        public String loadingMessage = "<gray><italic>Submitting your ballot…</italic></gray>";
+        /** Sound to play when submission succeeds. */
+        public SoundSpec successSound = new SoundSpec();
         public Config() {}
     }
 
@@ -117,7 +125,7 @@ public class SimpleBlockBallotMenu extends ChildMenuImp {
                 if (idx == 1) picked.add(c.getId());
             }
             if (picked.size() != min) { playerActor.sendMessage(miniMessage(applyPlaceholders(config.mustSelectExactly, Map.of("%min%", String.valueOf(min))), null)); new SimpleBlockBallotMenu(playerActor, getParentMenu(), electionsService, electionId).open(); return; }
-            new LoadingMenu(playerActor, getParentMenu()).open();
+            new LoadingMenu(playerActor, getParentMenu(), miniMessage(config.loadingTitle, ph), miniMessage(config.loadingMessage, ph)).open();
             new BukkitRunnable() {
                 @Override
                 public void run() {
@@ -126,8 +134,10 @@ public class SimpleBlockBallotMenu extends ChildMenuImp {
                     new BukkitRunnable() {
                         @Override
                         public void run() {
+                            // Close loading dialog after async completes
+                            playerActor.closeDialog();
                             if (!ok) { playerActor.sendMessage(miniMessage(config.submissionFailed)); new SimpleBlockBallotMenu(playerActor, getParentMenu(), electionsService, electionId).open(); }
-                            else { playerActor.sendMessage(miniMessage(config.submitted)); BallotSessions.clear(playerActor.getUniqueId(), electionId); }
+                            else { playerActor.sendMessage(miniMessage(config.submitted)); SoundHelper.play(playerActor, config.successSound); BallotSessions.clear(playerActor.getUniqueId(), electionId); }
                         }
                     }.runTask(Elections.getInstance());
                 }

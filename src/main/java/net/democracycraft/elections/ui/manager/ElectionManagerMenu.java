@@ -78,6 +78,9 @@ public class ElectionManagerMenu extends ParentMenuImp {
         public String durationFormat = "%days% d %hours% h %minutes% m";
 
         public String yamlHeader = "ElectionManagerMenu configuration. Placeholders: %player%, %election_title%, %election_id%, %status%, %voters_count%, %polls_count%, %candidates_count%, %ballots_count%, %days%, %hours%, %minutes%, %ballot_mode%.";
+        /** Loading dialog title and message for async actions (open/close/delete). */
+        public String loadingTitle = "<gold><bold>Working</bold></gold>";
+        public String loadingMessage = "<gray><italic>Applying changes…</italic></gray>";
 
         public Config() {}
     }
@@ -143,7 +146,7 @@ public class ElectionManagerMenu extends ParentMenuImp {
             // Determine action and perform DB writes asynchronously
             switch (election.getStatus()) {
                 case OPEN -> {
-                    new LoadingMenu(context.player(), ElectionManagerMenu.this).open();
+                    new LoadingMenu(context.player(), ElectionManagerMenu.this, miniMessage(config.loadingTitle, placeholders), miniMessage(config.loadingMessage, placeholders)).open();
                     new BukkitRunnable() {
                         @Override
                         public void run() {
@@ -170,7 +173,7 @@ public class ElectionManagerMenu extends ParentMenuImp {
                             return;
                         }
                     }
-                    new LoadingMenu(context.player(), ElectionManagerMenu.this).open();
+                    new LoadingMenu(context.player(), ElectionManagerMenu.this, miniMessage(config.loadingTitle, placeholders), miniMessage(config.loadingMessage, placeholders)).open();
                     new BukkitRunnable() {
                         @Override
                         public void run() {
@@ -221,7 +224,7 @@ public class ElectionManagerMenu extends ParentMenuImp {
                     confirm2.title(miniMessage("<red><bold>Really delete?</bold></red>"));
                     confirm2.afterAction(DialogBase.DialogAfterAction.CLOSE);
                     confirm2.button(miniMessage(config.deleteConfirmFinalBtn, placeholders), c2 -> {
-                        new LoadingMenu(c2.player(), ElectionManagerMenu.this).open();
+                        new LoadingMenu(c2.player(), ElectionManagerMenu.this, miniMessage(config.loadingTitle, placeholders), miniMessage(config.loadingMessage, placeholders)).open();
                         new BukkitRunnable() {
                             @Override
                             public void run() {

@@ -7,8 +7,8 @@ import net.democracycraft.elections.database.MySQLManager;
 import net.democracycraft.elections.service.SqlElectionsService;
 import net.democracycraft.elections.util.listener.PollInteractListener;
 import net.democracycraft.elections.util.listener.PlayerJoinHeadCacheListener;
-import net.democracycraft.elections.util.paste.PasteGGClient;
-import net.democracycraft.elections.util.paste.PasteStorage;
+import net.democracycraft.elections.util.export.PasteGGClient;
+import net.democracycraft.elections.util.export.PasteStorage;
 import net.democracycraft.elections.util.permissions.PermissionNodesStore;
 import org.bukkit.command.PluginCommand;
 import org.bukkit.event.Listener;
@@ -16,6 +16,7 @@ import org.bukkit.plugin.ServicePriority;
 import org.bukkit.plugin.java.JavaPlugin;
 import org.bukkit.scheduler.BukkitTask;
 import net.democracycraft.elections.util.config.ConfigPaths;
+import net.democracycraft.elections.util.export.local.queue.LocalExportedElectionQueue;
 
 /**
  * Main plugin entry point for DemocracyElections.
@@ -35,6 +36,7 @@ public class Elections extends JavaPlugin {
     private BukkitTask autoCloseTask;
     private BukkitTask deletedPurgeTask;
     private PasteStorage pasteStorage;
+    private LocalExportedElectionQueue localQueue;
 
     @Override
     public void onEnable() {
@@ -69,8 +71,10 @@ public class Elections extends JavaPlugin {
         // Register service for third-party plugins via Bukkit ServicesManager
         getServer().getServicesManager().register(ElectionsService.class, this.electionsService, this, ServicePriority.Highest);
 
-        // Paste storage client (paste.gg)
+        // Paste storage client (remote storage)
         this.pasteStorage = new PasteGGClient();
+        // Local queue for exports
+        this.localQueue = new LocalExportedElectionQueue(this);
 
         // Schedule periodic auto-close sweep asynchronously (avoid DB on main thread)
         SqlElectionsService sql = (SqlElectionsService) this.electionsService;
@@ -149,7 +153,12 @@ public class Elections extends JavaPlugin {
     public DatabaseSchema getSchema() { return schema; }
 
     /**
-     * @return the paste storage client (paste.gg).
+     * @return the paste storage client (remote storage).
      */
     public PasteStorage getPasteStorage() { return pasteStorage; }
+
+    /**
+     * @return local export queue singleton.
+     */
+    public LocalExportedElectionQueue getLocalExportQueue() { return localQueue; }
 }

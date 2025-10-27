@@ -68,6 +68,9 @@ public class DurationMenu extends ChildMenuImp {
         public float minutesMin = 0f;
         public float minutesMax = 59f;
         public float minutesStep = 1f;
+        /** Loading dialog title and message while saving/clearing. */
+        public String loadingTitle = "<gold><bold>Saving</bold></gold>";
+        public String loadingMessage = "<gray><italic>Applying duration changes…</italic></gray>";
         public Config() {}
     }
 
@@ -104,7 +107,7 @@ public class DurationMenu extends ChildMenuImp {
             int hours = hoursVal == null ? 0 : Math.round(hoursVal);
             int minutes = minutesVal == null ? 0 : Math.round(minutesVal);
             TimeDto timeDto = new TimeDto(0, minutes, hours);
-            new LoadingMenu(playerActor, getParentMenu()).open();
+            new LoadingMenu(playerActor, getParentMenu(), miniMessage(config.loadingTitle, placeholders), miniMessage(config.loadingMessage, placeholders)).open();
             // Offload DB write to async
             new BukkitRunnable() {
                 @Override
@@ -123,7 +126,7 @@ public class DurationMenu extends ChildMenuImp {
 
         dialogBuilder.button(miniMessage(config.clearedBtn, placeholders), context -> {
             // Run clear asynchronously
-            new LoadingMenu(context.player(), getParentMenu()).open();
+            new LoadingMenu(context.player(), getParentMenu(), miniMessage(config.loadingTitle, placeholders), miniMessage(config.loadingMessage, placeholders)).open();
             new BukkitRunnable() {
                 @Override
                 public void run() {

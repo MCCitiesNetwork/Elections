@@ -55,6 +55,9 @@ public class TitleEditMenu extends ChildMenuImp {
         public String emptyError = "<red><bold>Title cannot be empty.</bold></red>";
         public String updatedMsg = "<green><bold>Title updated.</bold></green>";
         public String yamlHeader = "TitleEditMenu configuration. Placeholders: %player%, %election_id%, %election_title%.";
+        /** Loading dialog title and message while saving. */
+        public String loadingTitle = "<gold><bold>Saving</bold></gold>";
+        public String loadingMessage = "<gray><italic>Saving changes…</italic></gray>";
         public Config() {}
     }
 
@@ -85,7 +88,7 @@ public class TitleEditMenu extends ChildMenuImp {
                 return;
             }
             // Run DB writes off the main thread and then update the UI back on main.
-            new LoadingMenu(playerActor, getParentMenu()).open();
+            new LoadingMenu(playerActor, getParentMenu(), miniMessage(config.loadingTitle, placeholders), miniMessage(config.loadingMessage, placeholders)).open();
             new BukkitRunnable() {
                 @Override
                 public void run() {

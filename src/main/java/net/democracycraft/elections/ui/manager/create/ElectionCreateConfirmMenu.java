@@ -47,6 +47,9 @@ public class ElectionCreateConfirmMenu extends ChildMenuImp {
         public String cancelBtn = "<red><bold>Cancel</bold></red>";
         public String createdMsg = "<green><bold>Election created.</bold></green>";
         public String yamlHeader = "ElectionCreateConfirmMenu configuration. Placeholders: %title%, %system%, %min_votes%, %perms_count%, %minutes%, %days%, %hours%, %minutes%.";
+        /** Loading dialog title and message while creating. */
+        public String loadingTitle = "<gold><bold>Creating</bold></gold>";
+        public String loadingMessage = "<gray><italic>Creating election…</italic></gray>";
         public Config() {}
     }
 
@@ -85,7 +88,7 @@ public class ElectionCreateConfirmMenu extends ChildMenuImp {
         dialogBuilder.button(miniMessage(config.confirmBtn), context -> {
             var service = wizard.getService();
             // Run creation on async thread; then UI update back on main
-            new LoadingMenu(context.player(), getParentMenu()).open();
+            new LoadingMenu(context.player(), getParentMenu(), miniMessage(config.loadingTitle, null), miniMessage(config.loadingMessage, null)).open();
             new BukkitRunnable() {
                 @Override
                 public void run() {

@@ -1,9 +1,10 @@
-package net.democracycraft.elections.util.yml;
+package net.democracycraft.elections.util.config;
 
 public enum DataFolder {
     NPC("npcs"),
     PERMISSIONS("permissions"),
-    MENUS("menus");
+    MENUS("menus"),
+    EXPORTS("exports");
 
 
     private final String path;

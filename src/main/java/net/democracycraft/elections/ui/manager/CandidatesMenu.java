@@ -61,6 +61,9 @@ public class CandidatesMenu extends ChildMenuImp {
         public String addedMsg = "<green><bold>Candidate added.</bold></green>";
         public String backBtn = "<gray>Back</gray>";
         public String yamlHeader = "CandidatesMenu configuration. Placeholders: %player%, %election_id%, %candidate_id%, %candidate_name%.";
+        /** Loading dialog title and message while adding/removing. */
+        public String loadingTitle = "<gold><bold>Updating</bold></gold>";
+        public String loadingMessage = "<gray><italic>Applying candidate changes…</italic></gray>";
         public Config() {}
     }
 
@@ -85,7 +88,7 @@ public class CandidatesMenu extends ChildMenuImp {
                 int candidateId = candidate.getId();
                 dialogBuilder.button(miniMessage(config.removePrefix, null).append(label), context -> {
                     // Offload removal to async thread
-                    new LoadingMenu(context.player(), getParentMenu()).open();
+                    new LoadingMenu(context.player(), getParentMenu(), miniMessage(config.loadingTitle, null), miniMessage(config.loadingMessage, null)).open();
                     new BukkitRunnable() {
                         @Override
                         public void run() {
@@ -112,7 +115,7 @@ public class CandidatesMenu extends ChildMenuImp {
                 return;
             }
             // Offload add to async thread
-            new LoadingMenu(playerActor, getParentMenu()).open();
+            new LoadingMenu(playerActor, getParentMenu(), miniMessage(config.loadingTitle, null), miniMessage(config.loadingMessage, null)).open();
             new BukkitRunnable() {
                 @Override
                 public void run() {

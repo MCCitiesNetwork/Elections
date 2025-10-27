@@ -1,6 +1,6 @@
 # Elections — In‑Game Usage Guide
 
-This guide shows players and staff how to run elections entirely in‑game: commands, permissions, menus, voting, exports, and health checks.
+This guide shows players and staff how to run elections entirely in‑game: simple commands, permissions, menus, voting, exports, and health checks.
 
 Quick tip: the base command is `/elections` (alias: `/democracyelections`).
 
@@ -14,38 +14,49 @@ Quick tip: the base command is `/elections` (alias: `/democracyelections`).
 4) Grant permissions using your permissions plugin (LuckPerms, etc.).
 
 ## Permissions
-- `elections.user` (default: true)
-  - Regular player actions (open polls, standard exports).
+- `elections.command` (default: op)
+  - Allows access to the `/elections` command entrypoint. Without this, a player cannot run any Elections command.
 - `elections.manager` (default: op)
-  - Full in‑game management: open Manager UI, create/edit/open/close elections, admin exports, delete pastes, health.
-- `elections.admin` (default: op)
-  - Broader admin umbrella; treated as manager where relevant.
+  - Manager abilities (open Manager UI, create/edit/open/close elections). Also grants: `elections.command`, `elections.export`, `elections.health`, `elections.permissions.reload`.
+- `elections.export` (default: op)
+  - Allows all export operations under `/elections export` (remote/local/both, admin modes, queue dispatch). Admin modes still require manager/admin as noted below.
 - `elections.health` (default: op)
   - Allows `/elections health`.
 - `elections.permissions.reload` (default: op)
   - Allows `/elections reloadperms`.
-- `elections.paste` (optional)
-  - Extra gate for paste deletion; otherwise `elections.manager`/`elections.admin` also work.
+- `elections.paste` (default: op)
+  - Extra gate for paste deletion (used by `/elections export delete`). Managers/Admins can also delete.
+- `elections.admin` (default: op)
+  - Admin umbrella. Inherits all Elections permissions (including `elections.command`).
+- `elections.user` (default: true)
+  - Player eligibility for voting and non-command features only. This does NOT grant access to any `/elections` commands.
 
-Note: Check your `plugin.yml` for final defaults in your build.
+Note: See `plugin.yml` for exact inheritance used by your build.
 
 ## Commands (in‑game)
+All commands require `elections.command` plus the specific node:
 - `/elections` or `/elections manager`
-  - Opens the Elections Manager (GUI). Must be executed by a player. Requires `elections.manager`.
+  - Opens the Elections Manager (GUI). Must be executed by a player. Requires: `elections.manager`.
 - `/elections export <id>`
-  - Exports an election snapshot to paste.gg (no voter names). Requires `elections.user`.
-- `/elections export admin <id>`
-  - Admin export (includes voter names embedded in ballots). Requires `elections.manager` or `elections.admin`.
+  - Publish election data online (paste.gg). No voter names. Requires: `elections.export`.
+- `/elections export local <id>`
+  - Save the export to the server (no upload). Requires: `elections.export`.
+- `/elections export both <id>`
+  - Publish online and also keep a local copy. Requires: `elections.export`.
+- `/elections export admin <id>` / `admin local <id>` / `admin both <id>`
+  - Admin export (includes voter names). Requires: `elections.export` + `elections.manager` (or `elections.admin`).
 - `/elections export delete <pasteId> confirm`
-  - Deletes a paste at paste.gg if your API key has rights. Requires `elections.manager`/`elections.paste`/`elections.admin`.
+  - Delete a paste on paste.gg (needs a valid API key). Requires: `elections.export` + (`elections.paste` or `elections.manager`/`elections.admin`).
+- `/elections export dispatch`
+  - Process the local queue now (uploads pending files). Requires: `elections.manager` (or `elections.admin`).
 - `/elections reloadperms`
-  - Reloads the YAML permission nodes filter used by the plugin. Requires `elections.permissions.reload`.
+  - Reloads the YAML permission nodes filter used by the plugin. Requires: `elections.permissions.reload`.
 - `/elections health`
-  - Prints basic health stats (counts, DB latency, config warnings). Requires `elections.health`.
+  - Shows basic health stats (counts, DB latency, config warnings). Requires: `elections.health`.
 
 Tab completion:
-- After `/elections`, you’ll see `export` and, if you’re a manager, also `manager`, `health`, `reloadperms`.
-- For `export`, IDs and sub‑options (`admin`, `delete`) are suggested contextually.
+- You’ll only see subcommands you’re allowed to run (based on your permissions).
+- For `export`, suggestions include IDs and options shown contextually: `admin`, `local`, `both`, `delete`, `dispatch`.
 
 ## Staff workflow (Manager UI)
 1) Open the Manager: `/elections`.
@@ -76,13 +87,31 @@ Tab completion:
 4) Submit the ballot. You can’t vote more than once per election; duplicates are blocked.
 
 ## Exports
-- Standard: `/elections export <id>` — posts JSON snapshot to paste.gg (no voter names) and returns the view URL.
-- Admin: `/elections export admin <id>` — includes voter names; restricted to managers/admins.
-- Delete: `/elections export delete <pasteId> confirm` — removes an existing paste when your API key allows it.
+Simple choices depending on your need:
+- Online only: `/elections export <id>` — posts JSON to paste.gg (no voter names) and returns the view URL.
+- Local file only: `/elections export local <id>` — writes a JSON file to the server’s local queue (no upload).
+- Both: `/elections export both <id>` — publishes online and also saves a local copy.
+- Admin (includes voter names):
+  - Online only: `/elections export admin <id>`
+  - Local only: `/elections export admin local <id>`
+  - Both: `/elections export admin both <id>`
+- Delete a published paste: `/elections export delete <pasteId> confirm`
+- Send queued files now: `/elections export dispatch`
+
+Where local files live (server filesystem):
+- `plugins/Elections/exports/queue` — pending files (named `election-<id>-<epoch>.json`).
+- `plugins/Elections/exports/sent` — archived after successful publish (filename includes the remote paste id and a timestamp).
+- `plugins/Elections/exports/failed` — files that could not be processed due to errors.
+
+How “dispatch” works:
+- It tries to publish every JSON in the queue.
+- If an election was already exported, the file is removed and counted as “skipped”.
+- Successes are moved to `sent/` with the paste id; failures stay in the queue or move to `failed/` when invalid.
+- When online publishing fails during a normal export, the plugin automatically saves a local copy and tells you: “Remote publish failed, saved to local queue …”.
 
 Notes:
 - Set `pastegg.apiKey` in config to enable authorized deletions; otherwise delete will likely fail.
-- Successful exports are recorded in the election’s status log.
+- Successful remote exports are recorded in the election’s status log.
 
 ## Health
 - `/elections health` shows:
@@ -107,6 +136,7 @@ In `config.yml`:
 - “You are not eligible to vote.” — you’re missing a required node or playtime minutes.
 - “You have already submitted a ballot for this election.” — duplicates are blocked per voter.
 - “A poll already exists here” — the block is already used by another election; the message shows which election owns it.
+- “Remote publish failed, saved to local queue …” — online upload failed; use `/elections export dispatch` later to send queued files.
 - “Export failed” — check paste.gg connectivity and that `pastegg.apiKey` is set for delete operations.
 
 ## UI customization (AutoYML)
@@ -124,4 +154,3 @@ The entire in‑game UI is configurable. Each menu defines a small Config class,
 - Tips
   - Keep files UTF‑8. Back up before large edits.
   - If multiple staff edit the same YAML, avoid concurrent edits while the server is writing.
-

@@ -12,6 +12,8 @@ import net.democracycraft.elections.data.VotingSystem;
 import net.democracycraft.elections.ui.ChildMenuImp;
 import net.democracycraft.elections.util.HeadUtil;
 import net.democracycraft.elections.ui.dialog.AutoDialog;
+import net.democracycraft.elections.util.sound.SoundHelper;
+import net.democracycraft.elections.util.sound.SoundSpec;
 import org.bukkit.entity.Player;
 import org.bukkit.inventory.ItemStack;
 
@@ -50,6 +52,12 @@ public class CandidateVoteMenu extends ChildMenuImp {
         public String invalidRank = "<red><bold>Invalid rank.</bold></red>";
         public String clearRankBtn = "<yellow>Clear rank</yellow>";
         public String backBtn = "<red><bold>Back</bold></red>";
+        /** Message shown when a block selection is saved. Placeholders: %candidate_name%. */
+        public String savedSelectionMsg = "<green><bold>Vote counted for %candidate_name%.</bold></green>";
+        /** Message shown when a rank is saved. Placeholders: %candidate_name%, %rank%. */
+        public String savedRankMsg = "<green><bold>Rank %rank% saved for %candidate_name%.</bold></green>";
+        /** Sound to play on successful save (selection or rank). */
+        public SoundSpec successSound = new SoundSpec();
         public String yamlHeader = "CandidateVoteMenu configuration. Placeholders: %candidate_name%, %max%.";
         public Config() {}
     }
@@ -87,6 +95,9 @@ public class CandidateVoteMenu extends ChildMenuImp {
         ItemStack headItem = HeadUtil.headFromBytesOrName(candidate.getId(), candidate.getName());
         dialogBuilder.addBody(DialogBody.item(headItem).showTooltip(true).build());
 
+        final String candidateName = candidate.getName();
+        final SoundSpec successSound = config.successSound;
+
         if (system == VotingSystem.BLOCK) {
             boolean initial = session.isSelected(candidateId);
             String selectKey = "SEL_" + candidateId;
@@ -94,6 +105,10 @@ public class CandidateVoteMenu extends ChildMenuImp {
             dialogBuilder.button(miniMessage(config.saveBtn), context -> {
                 Boolean value = context.response().getBoolean(selectKey);
                 session.setSelected(candidateId, value != null && value);
+                // Feedback: message + sound
+                Map<String,String> ph = new HashMap<>(); ph.put("%candidate_name%", candidateName);
+                context.player().sendMessage(miniMessage(applyPlaceholders(config.savedSelectionMsg, ph), null));
+                SoundHelper.play(context.player(), successSound);
                 new CandidateListMenu(context.player(), getParentMenu(), electionsService, electionId).open();
             });
         } else {
@@ -114,7 +129,12 @@ public class CandidateVoteMenu extends ChildMenuImp {
                     new CandidateVoteMenu(context.player(), getParentMenu(), electionsService, electionId, candidateId).open();
                     return;
                 }
-                session.setRank(candidateId, Math.round(value));
+                int rank = Math.round(value);
+                session.setRank(candidateId, rank);
+                // Feedback: message + sound
+                Map<String,String> ph = new HashMap<>(); ph.put("%candidate_name%", candidateName); ph.put("%rank%", String.valueOf(rank));
+                context.player().sendMessage(miniMessage(applyPlaceholders(config.savedRankMsg, ph), null));
+                SoundHelper.play(context.player(), successSound);
                 new CandidateListMenu(context.player(), getParentMenu(), electionsService, electionId).open();
             });
             dialogBuilder.button(miniMessage(config.clearRankBtn), context -> { session.clearRank(candidateId); new CandidateListMenu(context.player(), getParentMenu(), electionsService, electionId).open(); });

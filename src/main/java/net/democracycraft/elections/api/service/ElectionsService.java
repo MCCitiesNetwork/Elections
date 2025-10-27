@@ -9,13 +9,13 @@ import java.util.concurrent.CompletableFuture;
 
 /**
  * Public ElectionsService API used by third-party plugins.
- *
+ *<p>
  * Threading and blocking contract:
  * - All I/O and heavy work MUST NOT run on the Bukkit main thread.
  * - Async-first methods return CompletableFuture and complete on a background thread.
  * - Failures complete the future exceptionally with a descriptive RuntimeException.
  * - Snapshot getters below are in-memory only and safe to call on the main thread.
- *
+ *<p>
  * Nullability and semantics:
  * - Optional return values indicate absence (e.g., missing election/voter).
  * - Mutator methods return true if a state change occurred; false for no-op or not found.

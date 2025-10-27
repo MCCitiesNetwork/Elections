@@ -1,6 +1,7 @@
 package net.democracycraft.elections.util.yml;
 
 import net.democracycraft.elections.Elections;
+import net.democracycraft.elections.util.config.DataFolder;
 import org.yaml.snakeyaml.DumperOptions;
 import org.yaml.snakeyaml.Yaml;
 

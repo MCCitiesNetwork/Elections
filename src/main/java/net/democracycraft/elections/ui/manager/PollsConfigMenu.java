@@ -72,6 +72,9 @@ public class PollsConfigMenu extends ChildMenuImp {
         public String cancelBtn = "<gray>Cancel</gray>";
 
         public String yamlHeader = "PollsConfigMenu configuration. Placeholders: %player%, %polls_count%, %x%, %y%, %z%, %action%, %conflict_election_id%, %conflict_election_title%.";
+        /** Loading dialog title and message while defining/removing. */
+        public String loadingTitle = "<gold><bold>Updating</bold></gold>";
+        public String loadingMessage = "<gray><italic>Updating polls…</italic></gray>";
         public Config() {}
     }
 
@@ -115,7 +118,7 @@ public class PollsConfigMenu extends ChildMenuImp {
                 event.setCancelled(true);
                 dynamicListener.stop(); dynamicListener.deleteListener();
                 // Execute DB update asynchronously
-                new LoadingMenu(player, getParentMenu()).open();
+                new LoadingMenu(player, getParentMenu(), miniMessage(config.loadingTitle, null), miniMessage(config.loadingMessage, null)).open();
                 new BukkitRunnable() {
                     @Override
                     public void run() {

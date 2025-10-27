@@ -7,23 +7,35 @@ commands:
     description: Elections commands (manager UI, export data)
     usage: /<command>
     aliases: [elections]
-    permission: elections.user
+    permission: elections.command
 permissions:
   elections.admin:
     description: Grants all Elections permissions
     default: op
     children:
+      elections.command: true
       elections.manager: true
-      elections.user: true
+      elections.export: true
+      elections.permissions.reload: true
       elections.paste: true
       elections.health: true
+      elections.user: true
   elections.manager:
     description: Manage elections (open manager, create, edit, open/close)
     default: op
     children:
-      elections.user: true
+      elections.command: true
+      elections.export: true
+      elections.health: true
+      elections.permissions.reload: true
+  elections.command:
+    description: Access to /elections command entrypoint
+    default: op
+  elections.export:
+    description: Export elections data (remote/local/both, admin modes, dispatch)
+    default: op
   elections.user:
-    description: Use election features as a player
+    description: Use election features as a player (voting eligibility, non-command features)
     default: true
   elections.permissions.reload:
     description: Reload the permission nodes configuration

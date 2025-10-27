@@ -62,6 +62,9 @@ public class RequirementsMenu extends ChildMenuImp {
         public float playtimeMin = 0f;
         public float playtimeMax = 1_000_000f;
         public float playtimeStep = 1f;
+        /** Loading dialog title and message while saving. */
+        public String loadingTitle = "<gold><bold>Saving</bold></gold>";
+        public String loadingMessage = "<gray><italic>Applying requirements…</italic></gray>";
         public Config() {}
     }
 
@@ -125,7 +128,7 @@ public class RequirementsMenu extends ChildMenuImp {
             }
             final RequirementsDto dto = new RequirementsDto(newPerms, minutes);
             // Offload DB write to async and then update UI back on main thread.
-            new LoadingMenu(playerActor, getParentMenu()).open();
+            new LoadingMenu(playerActor, getParentMenu(), miniMessage(config.loadingTitle, placeholders), miniMessage(config.loadingMessage, placeholders)).open();
             new BukkitRunnable() {
                 @Override
                 public void run() {

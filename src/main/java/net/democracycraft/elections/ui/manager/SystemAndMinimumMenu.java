@@ -66,6 +66,9 @@ public class SystemAndMinimumMenu extends ChildMenuImp {
         public float minVotesMin = 1f;
         public float minVotesMax = 10000f;
         public float minVotesStep = 1f;
+        /** Loading dialog title and message used for async actions here. */
+        public String loadingTitle = "<gold><bold>Saving</bold></gold>";
+        public String loadingMessage = "<gray><italic>Applying configuration…</italic></gray>";
         public Config() {}
     }
 
@@ -106,7 +109,7 @@ public class SystemAndMinimumMenu extends ChildMenuImp {
             confirm.title(miniMessage(config.confirmCycleTitle, placeholders));
             confirm.button(miniMessage(config.confirmBtn, placeholders), c2 -> {
                 // Perform the update asynchronously to avoid DB on main thread
-                new LoadingMenu(c2.player(), getParentMenu()).open();
+                new LoadingMenu(c2.player(), getParentMenu(), miniMessage(config.loadingTitle, placeholders), miniMessage(config.loadingMessage, placeholders)).open();
                 new BukkitRunnable() {
                     @Override
                     public void run() {
@@ -155,7 +158,7 @@ public class SystemAndMinimumMenu extends ChildMenuImp {
             }
             final int minVotesFinal = minVotes;
             // Run DB write asynchronously, then update UI on main
-            new LoadingMenu(playerActor, getParentMenu()).open();
+            new LoadingMenu(playerActor, getParentMenu(), miniMessage(config.loadingTitle, placeholders), miniMessage(config.loadingMessage, placeholders)).open();
             new BukkitRunnable() {
                 @Override
                 public void run() {
