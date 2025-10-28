@@ -1,7 +1,7 @@
 package net.democracycraft.elections.command.subcommands;
 
+import com.google.gson.Gson;
 import net.democracycraft.elections.api.model.Election;
-import net.democracycraft.elections.api.model.Vote;
 import net.democracycraft.elections.api.model.Voter;
 import net.democracycraft.elections.api.service.ElectionsService;
 import net.democracycraft.elections.command.framework.CommandContext;
@@ -11,9 +11,9 @@ import net.democracycraft.elections.util.export.PasteStorage;
 import net.democracycraft.elections.util.export.local.queue.LocalExportedElectionQueue;
 import org.bukkit.Bukkit;
 
+import java.io.File;
 import java.util.List;
 import java.util.Map;
-import java.util.Locale;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
@@ -29,7 +29,8 @@ import java.util.stream.Collectors;
  * - export admin both <id>               -> remote + local with voter names
  * - export delete <id> confirm           -> delete a remote publication (managers)
  * - export dispatch                      -> process the entire local queue (managers)
- * - export ballots <local|online> <id>   -> export only ballots (anonymous), to local file or online
+ * - export ballots <local|online> <id>   -> export only ballots (anonymous), JSON array-of-arrays (ids)
+ * - export ballots admin <local|online> <id> -> export only ballots as JSON with voter names
  */
 public class ExportCommand implements Subcommand {
 
@@ -42,19 +43,19 @@ public class ExportCommand implements Subcommand {
     public String permission() { return "elections.export"; }
 
     @Override
-    public String usage() { return "export <id> | export local <id> | export both <id> | export admin [local|both] <id> | export delete <id> [confirm] | export dispatch | export ballots <local|online> <id>"; }
+    public String usage() { return "export <id> | export local <id> | export both <id> | export admin [local|both] <id> | export delete <id> [confirm] | export dispatch | export ballots <local|online> <id> | export ballots admin <local|online> <id>"; }
 
     @Override
     public void execute(CommandContext ctx) {
         if (ctx.args().length < 1) { ctx.usage(usage()); return; }
-        String a0 = ctx.args()[0].toLowerCase(Locale.ROOT);
+        String a0 = ctx.args()[0].toLowerCase(java.util.Locale.ROOT);
         switch (a0) {
             case "admin" -> executeAdminExport(ctx);
             case "delete" -> executeDelete(ctx);
             case "dispatch" -> executeDispatch(ctx);
             case "local" -> executeUserExport(ctx, Mode.LOCAL);
             case "both" -> executeUserExport(ctx, Mode.BOTH);
-            case "ballots" -> executeBallotsExport(ctx);
+            case "ballots" -> executeBallotsRouter(ctx);
             default -> executeUserExport(ctx, Mode.REMOTE);
         }
     }
@@ -252,51 +253,50 @@ public class ExportCommand implements Subcommand {
     }
 
     /**
-     * Publish only the ballots of a given election as JSON.
+     * Publish only the ballots of a given election as JSON (non-admin).
      * Usage: /elections export ballots <local|online> <electionId>
      *
-     * Behavior: anonymous export (no voter names). Local writes to exports/ballots, Online publishes to paste service.
+     * Output shape: an array-of-arrays of integer selections per ballot, e.g. [[X,Y,Z], [A,B], ...].
+     * No voter identifiers, no ballot IDs, and no date metadata are included.
+     * Local writes to exports/ballots, Online publishes to paste service.
      */
     private void executeBallotsExport(CommandContext ctx) {
-        if (ctx.args().length < 3) {
-            ctx.sender().sendMessage("Usage: /" + ctx.label() + " export ballots <local|online> <electionId>");
+        if (!ctx.sender().hasPermission("elections.export.ballots") && !ctx.sender().hasPermission("elections.export")) {
+            ctx.sender().sendMessage("You don't have permission (elections.export.ballots).");
             return;
         }
+        if (ctx.args().length < 3) { ctx.sender().sendMessage("Usage: /" + ctx.label() + " export ballots <local|online> <electionId>"); return; }
         String mode = ctx.args()[1].toLowerCase(java.util.Locale.ROOT);
         boolean isLocal = "local".equals(mode);
         boolean isOnline = "online".equals(mode);
-        if (!isLocal && !isOnline) {
-            ctx.sender().sendMessage("Invalid mode. Use 'local' or 'online'.");
-            return;
-        }
+        if (!isLocal && !isOnline) { ctx.sender().sendMessage("Invalid mode. Use 'local' or 'online'."); return; }
         int id = ctx.requireInt(2, "id");
         ElectionsService electionsService = ctx.electionsService();
         electionsService.getElectionAsync(id).whenComplete((opt, err) -> {
-            if (err != null) {
-                org.bukkit.Bukkit.getScheduler().runTask(ctx.plugin(), () -> ctx.sender().sendMessage("Lookup failed: " + err.getMessage()));
-                return;
-            }
-            if (opt.isEmpty()) {
-                org.bukkit.Bukkit.getScheduler().runTask(ctx.plugin(), () -> ctx.sender().sendMessage("Election not found."));
-                return;
-            }
+            if (err != null) { org.bukkit.Bukkit.getScheduler().runTask(ctx.plugin(), () -> ctx.sender().sendMessage("Lookup failed: " + err.getMessage())); return; }
+            if (opt.isEmpty()) { org.bukkit.Bukkit.getScheduler().runTask(ctx.plugin(), () -> ctx.sender().sendMessage("Election not found.")); return; }
             org.bukkit.Bukkit.getScheduler().runTaskAsynchronously(ctx.plugin(), () -> {
                 net.democracycraft.elections.api.model.Election election = opt.get();
-                // Build a lightweight JSON array of ballots (anonymous, no voter names)
-                com.google.gson.Gson gson = new com.google.gson.GsonBuilder()
+                // JSON root with candidates map + ballots arrays
+                java.util.Map<java.lang.Integer, java.lang.String> nameById = election.getCandidates().stream().collect(java.util.stream.Collectors.toMap(
+                        net.democracycraft.elections.api.model.Candidate::getId,
+                        net.democracycraft.elections.api.model.Candidate::getName,
+                        (a, b) -> a,
+                        java.util.LinkedHashMap::new
+                ));
+                java.util.LinkedHashMap<java.lang.String, java.lang.Object> root = new java.util.LinkedHashMap<>();
+                root.put("candidates", nameById);
+                java.util.List<java.util.List<java.lang.Integer>> ballotsSelections = election.getBallots().stream()
+                        .map(net.democracycraft.elections.api.model.Vote::getSelections)
+                        .collect(java.util.stream.Collectors.toList());
+                root.put("ballots", ballotsSelections);
+                Gson gson = new com.google.gson.GsonBuilder()
                         .disableHtmlEscaping()
                         .setPrettyPrinting()
                         .create();
-                java.util.List<net.democracycraft.elections.data.BallotDto> ballots = election.getBallots().stream().map(v -> {
-                    net.democracycraft.elections.data.BallotDto bd = new net.democracycraft.elections.data.BallotDto(v.getId(), election.getId(), v.getVoterId());
-                    for (Integer sel : v.getSelections()) bd.addSelection(sel);
-                    bd.setSubmittedAt(v.getSubmittedAt());
-                    return bd;
-                }).toList();
-                String json = gson.toJson(ballots);
+                String json = gson.toJson(root);
 
                 if (isLocal) {
-                    // Write to exports/ballots directory
                     java.io.File base = new java.io.File(ctx.plugin().getDataFolder(), net.democracycraft.elections.util.config.DataFolder.EXPORTS.getPath());
                     java.io.File ballotsDir = new java.io.File(base, "ballots");
                     if (!ballotsDir.exists() && !ballotsDir.mkdirs() && !ballotsDir.exists()) {
@@ -304,22 +304,21 @@ public class ExportCommand implements Subcommand {
                         return;
                     }
                     String ts = String.valueOf(System.currentTimeMillis());
-                    java.io.File out = new java.io.File(ballotsDir, "ballots-" + election.getId() + "-" + ts + ".json");
+                    File out = new File(ballotsDir, "ballots-" + election.getId() + "-" + ts + ".json");
                     try (java.io.FileOutputStream fos = new java.io.FileOutputStream(out)) {
                         fos.write(json.getBytes(java.nio.charset.StandardCharsets.UTF_8));
-                        org.bukkit.Bukkit.getScheduler().runTask(ctx.plugin(), () -> ctx.sender().sendMessage("Saved ballots to: " + out.getName()));
-                        ctx.plugin().getLogger().info("[ExportBallotsLocal] actor=" + ctx.sender().getName() + ", electionId=" + election.getId() + ", file=" + out.getName());
+                        org.bukkit.Bukkit.getScheduler().runTask(ctx.plugin(), () -> ctx.sender().sendMessage("Saved ballots to: " + out.getName() + " (" + ballotsSelections.size() + ")"));
+                        ctx.plugin().getLogger().info("[ExportBallotsLocal] actor=" + ctx.sender().getName() + ", electionId=" + election.getId() + ", file=" + out.getName() + ", count=" + ballotsSelections.size());
                     } catch (java.io.IOException io) {
                         org.bukkit.Bukkit.getScheduler().runTask(ctx.plugin(), () -> ctx.sender().sendMessage("Ballots local save failed: " + io.getMessage()));
                         ctx.plugin().getLogger().warning("[ExportBallotsLocal] actor=" + ctx.sender().getName() + ", electionId=" + election.getId() + ", error=" + io.getMessage());
                     }
                 } else {
-                    // Online publish
                     net.democracycraft.elections.util.export.PasteStorage storage = ctx.plugin().getPasteStorage();
                     storage.putAsync(json).thenAccept(pasteId -> {
                         String url = storage.viewUrl(pasteId);
                         ctx.sender().sendMessage("Published ballots: " + url);
-                        ctx.plugin().getLogger().info("[ExportBallotsOnline] actor=" + ctx.sender().getName() + ", electionId=" + election.getId() + ", pasteId=" + pasteId + ", count=" + ballots.size());
+                        ctx.plugin().getLogger().info("[ExportBallotsOnline] actor=" + ctx.sender().getName() + ", electionId=" + election.getId() + ", pasteId=" + pasteId + ", count=" + ballotsSelections.size());
                     }).exceptionally(ex -> {
                         org.bukkit.Bukkit.getScheduler().runTask(ctx.plugin(), () -> ctx.sender().sendMessage("Ballots publish failed: " + ex.getMessage()));
                         ctx.plugin().getLogger().warning("[ExportBallotsOnline] actor=" + ctx.sender().getName() + ", electionId=" + election.getId() + ", error=" + ex.getMessage());
@@ -328,6 +327,98 @@ public class ExportCommand implements Subcommand {
                 }
             });
         });
+    }
+
+    /**
+     * Publish only the ballots of a given election as JSON with voter names (admin).
+     * Usage: /elections export ballots admin <local|online> <electionId>
+     */
+    private void executeBallotsAdminExport(CommandContext ctx) {
+        if (!ctx.sender().hasPermission("elections.export.ballots.admin") && !ctx.sender().hasPermission("elections.admin")) {
+            ctx.sender().sendMessage("You don't have permission (elections.export.ballots.admin).");
+            return;
+        }
+        if (ctx.args().length < 4) { ctx.sender().sendMessage("Usage: /" + ctx.label() + " export ballots admin <local|online> <electionId>"); return; }
+        String mode = ctx.args()[2].toLowerCase(java.util.Locale.ROOT);
+        boolean isLocal = "local".equals(mode);
+        boolean isOnline = "online".equals(mode);
+        if (!isLocal && !isOnline) { ctx.sender().sendMessage("Invalid mode. Use 'local' or 'online'."); return; }
+        int id = ctx.requireInt(3, "id");
+        ElectionsService electionsService = ctx.electionsService();
+        electionsService.getElectionAsync(id).whenComplete((opt, err) -> {
+            if (err != null) { org.bukkit.Bukkit.getScheduler().runTask(ctx.plugin(), () -> ctx.sender().sendMessage("Lookup failed: " + err.getMessage())); return; }
+            if (opt.isEmpty()) { org.bukkit.Bukkit.getScheduler().runTask(ctx.plugin(), () -> ctx.sender().sendMessage("Election not found.")); return; }
+            electionsService.listVotersAsync(id).whenComplete((voters, vErr) -> {
+                if (vErr != null) { org.bukkit.Bukkit.getScheduler().runTask(ctx.plugin(), () -> ctx.sender().sendMessage("Failed to fetch voters: " + vErr.getMessage())); return; }
+                Map<Integer, String> voterNameById = voters.stream().collect(Collectors.toMap(Voter::getId, Voter::getName, (a1,b) -> a1));
+                org.bukkit.Bukkit.getScheduler().runTaskAsynchronously(ctx.plugin(), () -> {
+                    net.democracycraft.elections.api.model.Election election = opt.get();
+                    java.util.Map<java.lang.Integer, java.lang.String> nameById = election.getCandidates().stream().collect(java.util.stream.Collectors.toMap(
+                            net.democracycraft.elections.api.model.Candidate::getId,
+                            net.democracycraft.elections.api.model.Candidate::getName,
+                            (a, b) -> a,
+                            java.util.LinkedHashMap::new
+                    ));
+                    java.util.LinkedHashMap<java.lang.String, java.lang.Object> root = new java.util.LinkedHashMap<>();
+                    root.put("candidates", nameById);
+                    java.util.List<java.util.Map<String, Object>> ballots = new java.util.ArrayList<>();
+                    for (net.democracycraft.elections.api.model.Vote v : election.getBallots()) {
+                        java.util.LinkedHashMap<String, Object> b = new java.util.LinkedHashMap<>();
+                        b.put("id", v.getId());
+                        String vn = voterNameById.get(v.getVoterId());
+                        if (vn != null) b.put("voter", vn);
+                        b.put("selections", v.getSelections());
+                        ballots.add(b);
+                    }
+                    root.put("ballots", ballots);
+                    com.google.gson.Gson gson = new com.google.gson.GsonBuilder()
+                            .disableHtmlEscaping()
+                            .setPrettyPrinting()
+                            .create();
+                    String json = gson.toJson(root);
+                    if (isLocal) {
+                        java.io.File base = new java.io.File(ctx.plugin().getDataFolder(), net.democracycraft.elections.util.config.DataFolder.EXPORTS.getPath());
+                        java.io.File ballotsDir = new java.io.File(base, "ballots");
+                        if (!ballotsDir.exists() && !ballotsDir.mkdirs() && !ballotsDir.exists()) {
+                            org.bukkit.Bukkit.getScheduler().runTask(ctx.plugin(), () -> ctx.sender().sendMessage("Could not create ballots directory."));
+                            return;
+                        }
+                        String ts = String.valueOf(System.currentTimeMillis());
+                        java.io.File out = new java.io.File(ballotsDir, "ballots-admin-" + election.getId() + "-" + ts + ".json");
+                        try (java.io.FileOutputStream fos = new java.io.FileOutputStream(out)) {
+                            fos.write(json.getBytes(java.nio.charset.StandardCharsets.UTF_8));
+                            org.bukkit.Bukkit.getScheduler().runTask(ctx.plugin(), () -> ctx.sender().sendMessage("Saved ballots (admin) to: " + out.getName() + " (" + ballots.size() + ")"));
+                            ctx.plugin().getLogger().info("[ExportBallotsAdminLocal] actor=" + ctx.sender().getName() + ", electionId=" + election.getId() + ", file=" + out.getName() + ", count=" + ballots.size());
+                        } catch (java.io.IOException io) {
+                            org.bukkit.Bukkit.getScheduler().runTask(ctx.plugin(), () -> ctx.sender().sendMessage("Ballots (admin) local save failed: " + io.getMessage()));
+                            ctx.plugin().getLogger().warning("[ExportBallotsAdminLocal] actor=" + ctx.sender().getName() + ", electionId=" + election.getId() + ", error=" + io.getMessage());
+                        }
+                    } else {
+                        net.democracycraft.elections.util.export.PasteStorage storage = ctx.plugin().getPasteStorage();
+                        storage.putAsync(json).thenAccept(pasteId -> {
+                            String url = storage.viewUrl(pasteId);
+                            ctx.sender().sendMessage("Published ballots (admin): " + url);
+                            ctx.plugin().getLogger().info("[ExportBallotsAdminOnline] actor=" + ctx.sender().getName() + ", electionId=" + election.getId() + ", pasteId=" + pasteId + ", count=" + ballots.size());
+                        }).exceptionally(ex -> {
+                            org.bukkit.Bukkit.getScheduler().runTask(ctx.plugin(), () -> ctx.sender().sendMessage("Ballots (admin) publish failed: " + ex.getMessage()));
+                            ctx.plugin().getLogger().warning("[ExportBallotsAdminOnline] actor=" + ctx.sender().getName() + ", electionId=" + election.getId() + ", error=" + ex.getMessage());
+                            return null;
+                        });
+                    }
+                });
+            });
+        });
+    }
+
+    /**
+     * Route ballots-related exports:
+     * - ballots <local|online> <id>
+     * - ballots admin <local|online> <id>
+     */
+    private void executeBallotsRouter(CommandContext ctx) {
+        String[] a = ctx.args();
+        if (a.length >= 2 && "admin".equalsIgnoreCase(a[1])) executeBallotsAdminExport(ctx);
+        else executeBallotsExport(ctx);
     }
 
     @Override
@@ -342,15 +433,20 @@ public class ExportCommand implements Subcommand {
         if (a.length == 2) {
             if ("admin".equalsIgnoreCase(a[0])) return ctx.filter(List.of("local", "both"), a[1]);
             if ("delete".equalsIgnoreCase(a[0]) || "dispatch".equalsIgnoreCase(a[0])) return List.of();
-            if ("ballots".equalsIgnoreCase(a[0])) return ctx.filter(List.of("local", "online"), a[1]);
+            if ("ballots".equalsIgnoreCase(a[0])) return ctx.filter(List.of("local", "online", "admin"), a[1]);
             if ("local".equalsIgnoreCase(a[0]) || "both".equalsIgnoreCase(a[0])) return ctx.filter(ctx.electionIds(), a[1]);
-            // default export path expects id at a[0], but when completing second token we return empty
             return List.of();
         }
         if (a.length == 3) {
             if ("admin".equalsIgnoreCase(a[0])) return ctx.filter(ctx.electionIds(), a[2]);
             if ("delete".equalsIgnoreCase(a[0])) return ctx.filter(List.of("confirm"), a[2]);
-            if ("ballots".equalsIgnoreCase(a[0])) return ctx.filter(ctx.electionIds(), a[2]);
+            if ("ballots".equalsIgnoreCase(a[0])) {
+                if ("admin".equalsIgnoreCase(a[1])) return ctx.filter(List.of("local", "online"), a[2]);
+                return ctx.filter(ctx.electionIds(), a[2]);
+            }
+        }
+        if (a.length == 4) {
+            if ("ballots".equalsIgnoreCase(a[0]) && "admin".equalsIgnoreCase(a[1])) return ctx.filter(ctx.electionIds(), a[3]);
         }
         return List.of();
     }

@@ -19,7 +19,11 @@ Quick tip: the base command is `/elections` (alias: `/democracyelections`).
 - `elections.manager` (default: op)
   - Manager abilities (open Manager UI, create/edit/open/close elections). Also grants: `elections.command`, `elections.export`, `elections.health`, `elections.permissions.reload`.
 - `elections.export` (default: op)
-  - Allows all export operations under `/elections export` (remote/local/both, admin modes, queue dispatch). Admin modes still require manager/admin as noted below.
+  - Allows all export operations under `/elections export` for full election exports (remote/local/both). Admin modes still require manager/admin as noted below.
+- `elections.export.ballots` (default: op)
+  - Allows ballots‑only export: `/elections export ballots <local|online> <id>`.
+- `elections.export.ballots.admin` (default: op)
+  - Allows ballots‑only export with voter names: `/elections export ballots admin <local|online> <id>`.
 - `elections.health` (default: op)
   - Allows `/elections health`.
 - `elections.permissions.reload` (default: op)
@@ -38,13 +42,17 @@ All commands require `elections.command` plus the specific node:
 - `/elections` or `/elections manager`
   - Opens the Elections Manager (GUI). Must be executed by a player. Requires: `elections.manager`.
 - `/elections export <id>`
-  - Publish election data online (paste.gg). No voter names. Requires: `elections.export`.
+  - Publish full election data online (paste.gg). No voter names. Requires: `elections.export`.
 - `/elections export local <id>`
-  - Save the export to the server (no upload). Requires: `elections.export`.
+  - Save the full election export to the server (no upload). Requires: `elections.export`.
 - `/elections export both <id>`
   - Publish online and also keep a local copy. Requires: `elections.export`.
 - `/elections export admin <id>` / `admin local <id>` / `admin both <id>`
-  - Admin export (includes voter names). Requires: `elections.export` + `elections.manager` (or `elections.admin`).
+  - Admin full‑election export (includes voter names). Requires: `elections.export` + `elections.manager` (or `elections.admin`).
+- `/elections export ballots <local|online> <id>`
+  - Export only ballots as JSON (pretty printed). Includes the candidates map and each ballot as an array of candidate IDs. Requires: `elections.export.ballots` (or `elections.export`).
+- `/elections export ballots admin <local|online> <id>`
+  - Export only ballots as JSON (pretty printed) with voter names. Ballots are objects with `id`, `voter`, and `selections`. Requires: `elections.export.ballots.admin` (or `elections.admin`).
 - `/elections export delete <pasteId> confirm`
   - Delete a paste on paste.gg (needs a valid API key). Requires: `elections.export` + (`elections.paste` or `elections.manager`/`elections.admin`).
 - `/elections export dispatch`
@@ -56,7 +64,7 @@ All commands require `elections.command` plus the specific node:
 
 Tab completion:
 - You’ll only see subcommands you’re allowed to run (based on your permissions).
-- For `export`, suggestions include IDs and options shown contextually: `admin`, `local`, `both`, `delete`, `dispatch`.
+- For `export`, suggestions include IDs and options shown contextually: `admin`, `local`, `both`, `delete`, `dispatch`, `ballots`, and `ballots admin`.
 
 ## Staff workflow (Manager UI)
 1) Open the Manager: `/elections`.
@@ -88,20 +96,52 @@ Tab completion:
 
 ## Exports
 Simple choices depending on your need:
-- Online only: `/elections export <id>` — posts JSON to paste.gg (no voter names) and returns the view URL.
-- Local file only: `/elections export local <id>` — writes a JSON file to the server’s local queue (no upload).
-- Both: `/elections export both <id>` — publishes online and also saves a local copy.
-- Admin (includes voter names):
-  - Online only: `/elections export admin <id>`
-  - Local only: `/elections export admin local <id>`
-  - Both: `/elections export admin both <id>`
-- Delete a published paste: `/elections export delete <pasteId> confirm`
-- Send queued files now: `/elections export dispatch`
+- Full election (standard):
+  - Online only: `/elections export <id>` — posts JSON to paste.gg (no voter names) and returns the view URL.
+  - Local file only: `/elections export local <id>` — writes a JSON file to the server’s local queue (no upload).
+  - Both: `/elections export both <id>` — publishes online and also saves a local copy.
+  - Admin (includes voter names):
+    - Online only: `/elections export admin <id>`
+    - Local only: `/elections export admin local <id>`
+    - Both: `/elections export admin both <id>`
+- Ballots‑only (new):
+  - Online only: `/elections export ballots online <id>`
+  - Local only: `/elections export ballots local <id>`
+  - Admin with voter names: `/elections export ballots admin <local|online> <id>`
 
 Where local files live (server filesystem):
-- `plugins/Elections/exports/queue` — pending files (named `election-<id>-<epoch>.json`).
-- `plugins/Elections/exports/sent` — archived after successful publish (filename includes the remote paste id and a timestamp).
-- `plugins/Elections/exports/failed` — files that could not be processed due to errors.
+- Full election queue: `plugins/Elections/exports/queue` (pending), `sent` (archived), `failed` (errors).
+- Ballots‑only: `plugins/Elections/exports/ballots/`
+  - Non‑admin: `ballots-<electionId>-<epoch>.json`
+  - Admin: `ballots-admin-<electionId>-<epoch>.json`
+
+Ballots‑only JSON shape (pretty printed):
+- Non‑admin export
+  ```json
+  {
+    "candidates": {
+      "1": "Bob",
+      "2": "Jane"
+    },
+    "ballots": [
+      [1, 2, 3],
+      [2, 3]
+    ]
+  }
+  ```
+- Admin export
+  ```json
+  {
+    "candidates": {
+      "1": "Bob",
+      "2": "Jane"
+    },
+    "ballots": [
+      { "id": 101, "voter": "Alice", "selections": [1, 2, 3] },
+      { "id": 102, "voter": "Chris", "selections": [2, 3] }
+    ]
+  }
+  ```
 
 How “dispatch” works:
 - It tries to publish every JSON in the queue.
