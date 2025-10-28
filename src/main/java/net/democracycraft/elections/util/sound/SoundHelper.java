@@ -1,8 +1,6 @@
 package net.democracycraft.elections.util.sound;
 
-import org.bukkit.Location;
-import org.bukkit.Sound;
-import org.bukkit.SoundCategory;
+import org.bukkit.*;
 import org.bukkit.entity.Player;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
@@ -29,12 +27,20 @@ public final class SoundHelper {
         float pitch = spec.pitch;
         SoundCategory category = spec.category != null ? spec.category : SoundCategory.MASTER;
         if (spec.sound == null || spec.sound.isBlank()) return;
-        // Try to match enum constant without using deprecated valueOf; fallback to string key
+
+        // Try to match using Registry iterator
         Sound matched = null;
         String name = spec.sound.trim();
-        for (Sound s : Sound.values()) {
-            if (s.name().equalsIgnoreCase(name)) { matched = s; break; }
+        for (Sound s : Registry.SOUNDS) {
+            NamespacedKey key = Registry.SOUNDS.getKey(s);
+            if (key != null &&
+                    (key.getKey().equalsIgnoreCase(name) ||
+                            key.toString().equalsIgnoreCase(name))) {
+                matched = s;
+                break;
+            }
         }
+
         if (matched != null) {
             player.playSound(loc, matched, category, volume, pitch);
         } else {

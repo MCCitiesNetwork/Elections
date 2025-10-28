@@ -45,6 +45,7 @@ public class BallotIntroMenu extends ParentMenuImp {
         public String startBtn = "<green><bold>Start Voting</bold></green>";
         public String closeBtn = "<red><bold>Close</bold></red>";
         public String yamlHeader = "BallotIntroMenu configuration. Placeholders: %election_title%, %system%, %min%.";
+        public String valueGrayFormat = "<gray>%value%</gray>";
         public Config() {}
     }
 
@@ -75,8 +76,8 @@ public class BallotIntroMenu extends ParentMenuImp {
         String howTo = election.getSystem() == VotingSystem.BLOCK ? applyPlaceholders(config.howBlock, placeholders) : applyPlaceholders(config.howPreferential, placeholders);
 
         dialogBuilder.addBody(DialogBody.plainMessage(Component.newline()
-                .append(miniMessage(config.systemLabel, placeholders)).append(miniMessage("<gray>" + systemName + "</gray>"))
-                .appendNewline().append(miniMessage(config.minLabel, placeholders)).append(miniMessage("<gray>" + minVotes + "</gray>"))
+                .append(miniMessage(config.systemLabel, placeholders)).append(miniMessage(applyPlaceholders(config.valueGrayFormat, Map.of("%value%", systemName)), null))
+                .appendNewline().append(miniMessage(config.minLabel, placeholders)).append(miniMessage(applyPlaceholders(config.valueGrayFormat, Map.of("%value%", minVotes)), null))
                 .appendNewline().append(miniMessage(config.howLabel, placeholders)).append(miniMessage(howTo))
         ));
 

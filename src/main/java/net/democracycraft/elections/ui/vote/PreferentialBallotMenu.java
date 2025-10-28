@@ -64,6 +64,8 @@ public class PreferentialBallotMenu extends ChildMenuImp {
         public String loadingMessage = "<gray><italic>Submitting your ballot…</italic></gray>";
         /** Sound to play when submission succeeds. */
         public SoundSpec successSound = new SoundSpec();
+        public String valueGrayFormat = "<gray>%value%</gray>";
+        public String candidateNameLabelFormat = "<gray>%candidate_name%</gray>";
         public Config() {}
     }
 
@@ -93,7 +95,7 @@ public class PreferentialBallotMenu extends ChildMenuImp {
         dialogBuilder.afterAction(DialogBase.DialogAfterAction.CLOSE);
 
         dialogBuilder.addBody(DialogBody.plainMessage(Component.newline()
-                .append(miniMessage(config.minPrefsLabel, placeholders)).append(miniMessage("<gray>" + min + "</gray>", null))
+                .append(miniMessage(config.minPrefsLabel, placeholders)).append(miniMessage(applyPlaceholders(config.valueGrayFormat, Map.of("%value%", String.valueOf(min))), null))
                 .appendNewline().append(miniMessage(config.instruction, placeholders))
         ));
 
@@ -107,7 +109,7 @@ public class PreferentialBallotMenu extends ChildMenuImp {
             rankKeyToId.put(rankKey, candidate.getId());
             HeadUtil.updateHeadItemBytesAsync(electionsService, electionId, candidate.getId(), candidate.getName());
             dialogBuilder.addBody(DialogBody.item(HeadUtil.headFromBytesOrName(candidate.getId(), candidate.getName())).showTooltip(true).build());
-            dialogBuilder.addInput(DialogInput.bool(selectKey, miniMessage("<gray>" + candidate.getName() + "</gray>")).initial(false).build());
+            dialogBuilder.addInput(DialogInput.bool(selectKey, miniMessage(applyPlaceholders(config.candidateNameLabelFormat, Map.of("%candidate_name%", candidate.getName())), null)).initial(false).build());
             dialogBuilder.addInput(DialogInput.text(rankKey, miniMessage(applyPlaceholders(config.rankForFormat, Map.of("%max%", String.valueOf(maxRank), "%candidate_name%", candidate.getName())), null)).labelVisible(true).build());
         }
 

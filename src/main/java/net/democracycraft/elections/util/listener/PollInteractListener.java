@@ -50,7 +50,7 @@ public class PollInteractListener implements Listener {
         }
 
         // Minimal eligibility: require elections.user and any configured permission nodes
-        if (!player.hasPermission("elections.user") && !player.hasPermission("democracyelections.user")) {
+        if (!player.hasPermission("elections.user")) {
             player.sendMessage("You don't have permission to vote.");
             return;
         }

@@ -58,6 +58,9 @@ public class ElectionListMenu extends ParentMenuImp {
         public String prevBtn = "<gray>◀ Prev</gray>";
         public String closeBtn = "<red><bold>Close</bold></red>";
         public String yamlHeader = "ElectionListMenu configuration. Placeholders per row: %id%, %title%, %status%, %voters%, %cands%.";
+        public String searchDialogTitle = "<gray>Search elections</gray>";
+        public String searchQueryLabel = "<gray>Query</gray>";
+        public String searchApplyBtn = "<green>Apply</green>";
         public Config() {}
     }
 
@@ -104,10 +107,10 @@ public class ElectionListMenu extends ParentMenuImp {
         dialogBuilder.button(miniMessage(config.createBtn, null), context -> new ElectionCreateWizard(context.player(), electionsService).open());
         dialogBuilder.button(miniMessage(config.searchBtn, null), context -> {
             AutoDialog.Builder searchDlg = getAutoDialogBuilder();
-            searchDlg.title(miniMessage("<gray>Search elections</gray>", null));
-            var input = io.papermc.paper.registry.data.dialog.input.DialogInput.text("Q", miniMessage("<gray>Query</gray>", null)).labelVisible(true).build();
+            searchDlg.title(miniMessage(config.searchDialogTitle, null));
+            var input = io.papermc.paper.registry.data.dialog.input.DialogInput.text("Q", miniMessage(config.searchQueryLabel, null)).labelVisible(true).build();
             searchDlg.addInput(input);
-            searchDlg.buttonWithPlayer(miniMessage("<green>Apply</green>", null), null, java.time.Duration.ofMinutes(3), 1, (p, response) -> {
+            searchDlg.buttonWithPlayer(miniMessage(config.searchApplyBtn, null), null, java.time.Duration.ofMinutes(3), 1, (p, response) -> {
                 String q = response.getText("Q");
                 new ElectionListMenu(p, electionsService, 0, q).open();
             });

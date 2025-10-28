@@ -66,6 +66,8 @@ public class SimplePreferentialBallotMenu extends ChildMenuImp {
         public String loadingTitle = "<gold><bold>Submitting</bold></gold>";
         /** Loading dialog message shown while submitting. */
         public String loadingMessage = "<gray><italic>Submitting your ballot…</italic></gray>";
+        /** Label format for each candidate selector. */
+        public String candidateLabelFormat = "<white>%candidate_name%</white>";
         /** Sound to play when submission succeeds. */
         public SoundSpec successSound = new SoundSpec();
         public Config() {}
@@ -114,7 +116,8 @@ public class SimplePreferentialBallotMenu extends ChildMenuImp {
                 entries.add(SingleOptionDialogInput.OptionEntry.create(String.valueOf(r), miniMessage(applyPlaceholders(config.optionRankFormat, Map.of("%candidate_name%", c.getName(), "%rank%", String.valueOf(r))), null), init));
             }
             String key = "RANK_" + c.getId();
-            dialogBuilder.addInput(DialogInput.singleOption(key, miniMessage("<white>" + c.getName() + "</white>", null), entries)
+            Map<String,String> cph = Map.of("%candidate_name%", c.getName());
+            dialogBuilder.addInput(DialogInput.singleOption(key, miniMessage(applyPlaceholders(config.candidateLabelFormat, cph), null), entries)
                     .build());
         }
 

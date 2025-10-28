@@ -67,6 +67,8 @@ public class SimpleBlockBallotMenu extends ChildMenuImp {
         public String loadingMessage = "<gray><italic>Submitting your ballot…</italic></gray>";
         /** Sound to play when submission succeeds. */
         public SoundSpec successSound = new SoundSpec();
+        public String valueGrayFormat = "<gray>%value%</gray>";
+        public String candidateLabelFormat = "<white>%candidate_name%</white>";
         public Config() {}
     }
 
@@ -101,7 +103,7 @@ public class SimpleBlockBallotMenu extends ChildMenuImp {
 
         dialogBuilder.addBody(DialogBody.plainMessage(Component.newline()
                 .append(miniMessage(config.instruction, ph)).appendNewline()
-                .append(miniMessage(config.selectedLabel, ph)).append(miniMessage("<gray>" + session.selectedCount() + "</gray>", null))
+                .append(miniMessage(config.selectedLabel, ph)).append(miniMessage(applyPlaceholders(config.valueGrayFormat, Map.of("%value%", String.valueOf(session.selectedCount()))), null))
         ));
 
         for (Candidate c : election.getCandidates()) {
@@ -111,7 +113,7 @@ public class SimpleBlockBallotMenu extends ChildMenuImp {
             entries.add(SingleOptionDialogInput.OptionEntry.create("0", miniMessage(applyPlaceholders(config.optionNotSelected, Map.of("%candidate_name%", c.getName())), null), !selected));
             entries.add(SingleOptionDialogInput.OptionEntry.create("1", miniMessage(applyPlaceholders(config.optionSelected, Map.of("%candidate_name%", c.getName())), null), selected));
             dialogBuilder.addInput(DialogInput
-                    .singleOption(key, miniMessage("<white>" + c.getName() + "</white>", null), entries)
+                    .singleOption(key, miniMessage(applyPlaceholders(config.candidateLabelFormat, Map.of("%candidate_name%", c.getName())), null), entries)
                     .build());
         }
 

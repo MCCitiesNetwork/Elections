@@ -46,6 +46,7 @@ public class CandidateVoteMenu extends ChildMenuImp {
         public String titleFallback = "<gold><bold>Vote</bold></gold>";
         public String electionNotFound = "<red><bold>Election not found.</bold></red>";
         public String candidateNotFound = "<red><bold>Candidate not found.</bold></red>";
+        public String candidateTitleFormat = "<white><bold>%candidate_name%</bold></white>";
         public String selectLabel = "<aqua>Select</aqua>";
         public String saveBtn = "<gray>Save</gray>";
         public String rankLabelFormat = "<aqua>Rank (1..%max%)</aqua>";
@@ -87,7 +88,7 @@ public class CandidateVoteMenu extends ChildMenuImp {
             return dialogBuilder.build();
         }
 
-        dialogBuilder.title(miniMessage("<white><bold>" + candidate.getName() + "</bold></white>", null));
+        dialogBuilder.title(miniMessage(applyPlaceholders(config.candidateTitleFormat, Map.of("%candidate_name%", candidate.getName())), null));
         dialogBuilder.canCloseWithEscape(true);
         dialogBuilder.afterAction(DialogBase.DialogAfterAction.CLOSE);
 

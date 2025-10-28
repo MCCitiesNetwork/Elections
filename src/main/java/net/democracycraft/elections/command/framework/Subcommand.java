@@ -13,7 +13,7 @@ public interface Subcommand {
     default boolean hasPermission(CommandSender sender) {
         String p = permission();
         String eff = (p == null || p.isBlank()) ? "elections.user" : p;
-        return sender.hasPermission(eff) || sender.hasPermission("elections.admin") || sender.hasPermission("democracyelections.admin");
+        return sender.hasPermission(eff) || sender.hasPermission("elections.admin");
     }
 
     void execute(CommandContext ctx);

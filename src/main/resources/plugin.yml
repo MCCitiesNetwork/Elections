@@ -3,10 +3,9 @@ version: '${version}'
 main: net.democracycraft.elections.Elections
 api-version: '1.21'
 commands:
-  democracyelections:
+  elections:
     description: Elections commands (manager UI, export data)
     usage: /<command>
-    aliases: [elections]
     permission: elections.command
 permissions:
   elections.admin:

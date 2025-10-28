@@ -1,8 +1,7 @@
 package net.democracycraft.elections.util.config;
 
 public enum ConfigPaths {
-    ELECTION_MANAGER_TILE(""),
-    AUTO_CLOSE_SWEEP_SECONDS("elections.autoCloseSweepSecods"),
+    AUTO_CLOSE_SWEEP_SECONDS("elections.autoCloseSweepSeconds"),
     DELETED_PURGE_SWEEP_SECONDS("elections.deletedPurgeSweepSeconds"),
     DELETED_RETENTION_DAYS("elections.deletedRetentionDays"),
     PASTEGG_API_BASE("pastegg.apiBase"),

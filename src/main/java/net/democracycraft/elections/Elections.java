@@ -103,13 +103,13 @@ public class Elections extends JavaPlugin {
     }
 
     private void startMainCommand() {
-        PluginCommand cmd = getCommand("democracyelections");
+        PluginCommand cmd = getCommand("elections");
         if (cmd != null) {
             ElectionsCommand executor = new ElectionsCommand(this, electionsService);
             cmd.setExecutor(executor);
             cmd.setTabCompleter(executor);
         } else {
-            getLogger().severe("Command 'democracyelections' not found in plugin.yml");
+            getLogger().severe("Command 'elections' not found in plugin.yml");
         }
     }
 
@@ -126,6 +126,14 @@ public class Elections extends JavaPlugin {
         }
         // Unregister provided service
         getServer().getServicesManager().unregisterAll(this);
+        // Shutdown async executor in service (if present)
+        if (electionsService instanceof SqlElectionsService sql) {
+            try { sql.shutdown(); } catch (Exception ignored) {}
+        }
+        // Disconnect from MySQL
+        if (mysql != null) {
+            try { mysql.disconnect(); } catch (Exception ignored) {}
+        }
     }
 
     /**

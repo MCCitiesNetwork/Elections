@@ -49,6 +49,7 @@ public class TitleEditMenu extends ChildMenuImp {
     public static class Config implements Serializable {
         public String title = "<gold><bold>Edit Title</bold></gold>";
         public String currentPrefix = "<gray>Current:</gray> ";
+        public String currentTitleFormat = "<white><bold>%election_title%</bold></white>";
         public String inputLabel = "<aqua>Title</aqua>";
         public String saveBtn = "<green><bold>Save</bold></green>";
         public String backBtn = "<gray>Back</gray>";
@@ -76,7 +77,7 @@ public class TitleEditMenu extends ChildMenuImp {
         dialogBuilder.afterAction(DialogBase.DialogAfterAction.CLOSE);
         if (election != null) {
             Component currentTitle = miniMessage(config.currentPrefix, placeholders)
-                    .append(miniMessage("<white><bold>" + election.getTitle() + "</bold></white>", null));
+                    .append(miniMessage(applyPlaceholders(config.currentTitleFormat, placeholders), null));
             dialogBuilder.addBody(DialogBody.plainMessage(currentTitle));
         }
         dialogBuilder.addInput(DialogInput.text(Keys.TITLE.name(), miniMessage(applyPlaceholders(config.inputLabel, placeholders), null)).labelVisible(true).build());

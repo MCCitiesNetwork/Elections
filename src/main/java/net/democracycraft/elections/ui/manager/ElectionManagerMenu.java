@@ -46,12 +46,14 @@ public class ElectionManagerMenu extends ParentMenuImp {
     public static class Config implements Serializable {
         public String header = "<gold><bold>Election Manager:</bold></gold> <white><bold>%election_title%</bold></white> <gray>(#%election_id%)</gray>";
         public String notFound = "<red><bold>Election not found.</bold></red>";
+        public String notFoundTitle = "<gold><bold>Election Manager</bold></gold>";
 
         public String statusLabel = "<aqua>Status: </aqua>";
         public String votersLabel = "<aqua>Voters: </aqua>";
         public String pollsLabel = "<aqua>Polls: </aqua>";
         public String candidatesLabel = "<aqua>Candidates: </aqua>";
         public String closesLabel = "<aqua>Closes: </aqua>";
+        public String valueGrayFormat = "<gray>%value%</gray>";
 
         public String ballotsSubmittedBtn = "<green><bold>Ballots submitted:</bold></green> <white>%ballots_count%</white>";
         public String editTitleBtn = "<yellow><bold>Edit Title</bold></yellow>";
@@ -82,6 +84,10 @@ public class ElectionManagerMenu extends ParentMenuImp {
         public String loadingTitle = "<gold><bold>Working</bold></gold>";
         public String loadingMessage = "<gray><italic>Applying changes…</italic></gray>";
 
+        public String permissionDeniedMsg = "<red>You don't have permission.</red>";
+        public String deleteConfirmTitle = "<red><bold>Delete Election?</bold></red>";
+        public String deleteConfirmFinalTitle = "<red><bold>Really delete?</bold></red>";
+
         public Config() {}
     }
 
@@ -97,7 +103,7 @@ public class ElectionManagerMenu extends ParentMenuImp {
         Optional<Election> optional = electionService.getElection(electionId);
         if (optional.isEmpty()) {
             AutoDialog.Builder dialogBuilder = getAutoDialogBuilder();
-            dialogBuilder.title(miniMessage("<gold><bold>Election Manager</bold></gold>"));
+            dialogBuilder.title(miniMessage(config.notFoundTitle));
             dialogBuilder.addBody(DialogBody.plainMessage(miniMessage(config.notFound)));
             return dialogBuilder.build();
         }
@@ -129,11 +135,11 @@ public class ElectionManagerMenu extends ParentMenuImp {
 
         // Overview/info body
         Component overviewBody = Component.newline()
-                .append(miniMessage(config.statusLabel, placeholders)).append(miniMessage("<gray>" + placeholders.get("%status%") + "</gray>"))
-                .appendNewline().append(miniMessage(config.votersLabel, placeholders)).append(miniMessage("<gray>" + placeholders.get("%voters_count%") + "</gray>"))
-                .appendNewline().append(miniMessage(config.pollsLabel, placeholders)).append(miniMessage("<gray>" + placeholders.get("%polls_count%") + "</gray>"))
-                .appendNewline().append(miniMessage(config.candidatesLabel, placeholders)).append(miniMessage("<gray>" + placeholders.get("%candidates_count%") + "</gray>"))
-                .appendNewline().append(miniMessage(config.closesLabel, placeholders)).append(miniMessage("<gray>" + durationString + "</gray>"));
+                .append(miniMessage(config.statusLabel, placeholders)).append(miniMessage(applyPlaceholders(config.valueGrayFormat, Map.of("%value%", placeholders.get("%status%"))), null))
+                .appendNewline().append(miniMessage(config.votersLabel, placeholders)).append(miniMessage(applyPlaceholders(config.valueGrayFormat, Map.of("%value%", placeholders.get("%voters_count%"))), null))
+                .appendNewline().append(miniMessage(config.pollsLabel, placeholders)).append(miniMessage(applyPlaceholders(config.valueGrayFormat, Map.of("%value%", placeholders.get("%polls_count%"))), null))
+                .appendNewline().append(miniMessage(config.candidatesLabel, placeholders)).append(miniMessage(applyPlaceholders(config.valueGrayFormat, Map.of("%value%", placeholders.get("%candidates_count%"))), null))
+                .appendNewline().append(miniMessage(config.closesLabel, placeholders)).append(miniMessage(applyPlaceholders(config.valueGrayFormat, Map.of("%value%", durationString)), null));
         builder.addBody(DialogBody.plainMessage(overviewBody));
 
         // Buttons
@@ -212,16 +218,16 @@ public class ElectionManagerMenu extends ParentMenuImp {
         // Delete with double confirmation (requires manager permission); hidden for DELETED elections
         if (election.getStatus() != net.democracycraft.elections.data.ElectionStatus.DELETED) {
             builder.button(miniMessage(config.deleteBtn, placeholders), context -> {
-                if (!context.player().hasPermission("elections.manager") && !context.player().hasPermission("elections.admin") && !context.player().hasPermission("democracyelections.admin")) {
-                    context.player().sendMessage(miniMessage("<red>You don't have permission.</red>"));
+                if (!context.player().hasPermission("elections.manager") && !context.player().hasPermission("elections.admin")) {
+                    context.player().sendMessage(miniMessage(config.permissionDeniedMsg));
                     return;
                 }
                 AutoDialog.Builder confirm1 = getAutoDialogBuilder();
-                confirm1.title(miniMessage("<red><bold>Delete Election?</bold></red>"));
+                confirm1.title(miniMessage(config.deleteConfirmTitle, placeholders));
                 confirm1.afterAction(DialogBase.DialogAfterAction.CLOSE);
                 confirm1.button(miniMessage(config.deleteConfirmBtn, placeholders), c1 -> {
                     AutoDialog.Builder confirm2 = getAutoDialogBuilder();
-                    confirm2.title(miniMessage("<red><bold>Really delete?</bold></red>"));
+                    confirm2.title(miniMessage(config.deleteConfirmFinalTitle, placeholders));
                     confirm2.afterAction(DialogBase.DialogAfterAction.CLOSE);
                     confirm2.button(miniMessage(config.deleteConfirmFinalBtn, placeholders), c2 -> {
                         new LoadingMenu(c2.player(), ElectionManagerMenu.this, miniMessage(config.loadingTitle, placeholders), miniMessage(config.loadingMessage, placeholders)).open();

@@ -73,6 +73,11 @@ public class CandidateListMenu extends ChildMenuImp {
         public String loadingMessage = "<gray><italic>Submitting your ballot…</italic></gray>";
         /** Sound to play when submission succeeds. */
         public SoundSpec successSound = new SoundSpec();
+        public String selectedTag = " <gray>[Selected]</gray>";
+        public String rankTagFormat = " <gray>[%rank%]</gray>";
+        public String candidateLabelFormat = "<white><bold>%candidate_name%</bold></white>%state%";
+        public String valueGrayFormat = "<gray>%value%</gray>";
+        public String clearConfirmTitle = "<yellow><bold>Clear all selections?</bold></yellow>";
         public Config() {}
     }
 
@@ -104,7 +109,7 @@ public class CandidateListMenu extends ChildMenuImp {
         if (system == VotingSystem.BLOCK) {
             dialogBuilder.addBody(DialogBody.plainMessage(Component.newline()
                     .append(miniMessage(config.blockInstr, placeholders)).appendNewline()
-                    .append(miniMessage(config.selectedLabel, placeholders)).append(miniMessage("<gray>" + session.selectedCount() + "</gray>", null))));
+                    .append(miniMessage(config.selectedLabel, placeholders)).append(miniMessage(applyPlaceholders(config.valueGrayFormat, Map.of("%value%", String.valueOf(session.selectedCount()))), null))));
         } else {
             dialogBuilder.addBody(DialogBody.plainMessage(Component.newline()
                     .append(miniMessage(config.prefInstr, placeholders)).appendNewline()));
@@ -117,12 +122,12 @@ public class CandidateListMenu extends ChildMenuImp {
             Candidate candidate = all.get(i);
             String stateText;
             if (system == VotingSystem.BLOCK) {
-                stateText = session.isSelected(candidate.getId()) ? " <gray>[Selected]</gray>" : "";
+                stateText = session.isSelected(candidate.getId()) ? config.selectedTag : "";
             } else {
                 Integer rankValue = session.getRank(candidate.getId());
-                stateText = rankValue != null ? (" <gray>[" + rankValue + "]</gray>") : "";
+                stateText = (rankValue != null) ? applyPlaceholders(config.rankTagFormat, Map.of("%rank%", String.valueOf(rankValue))) : "";
             }
-            String labelMini = "<white><bold>" + candidate.getName() + "</bold></white>" + stateText;
+            String labelMini = applyPlaceholders(config.candidateLabelFormat, Map.of("%candidate_name%", candidate.getName(), "%state%", stateText));
             dialogBuilder.button(miniMessage(labelMini, null), context -> new CandidateVoteMenu(context.player(), this.getParentMenu(), electionsService, electionId, candidate.getId()).open());
         }
         if (page > 0) dialogBuilder.button(miniMessage(config.prevBtn, placeholders), c -> new CandidateListMenu(c.player(), getParentMenu(), electionsService, electionId, page - 1).open());
@@ -184,7 +189,7 @@ public class CandidateListMenu extends ChildMenuImp {
 
         dialogBuilder.button(miniMessage(config.clearBtn, placeholders), context -> {
             AutoDialog.Builder confirm = getAutoDialogBuilder();
-            confirm.title(miniMessage("<yellow><bold>Clear all selections?</bold></yellow>", null));
+            confirm.title(miniMessage(config.clearConfirmTitle, placeholders));
             confirm.button(miniMessage(config.clearConfirmBtn, placeholders), c2 -> { BallotSessions.get(c2.player().getUniqueId(), electionId, system).clearAll(); new CandidateListMenu(c2.player(), getParentMenu(), electionsService, electionId, page).open(); });
             confirm.button(miniMessage(config.backBtn, placeholders), c2 -> new CandidateListMenu(c2.player(), getParentMenu(), electionsService, electionId, page).open());
             context.player().showDialog(confirm.build());
