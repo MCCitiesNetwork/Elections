@@ -28,7 +28,7 @@ import java.util.Optional;
  */
 public class CandidatesMenu extends ChildMenuImp {
 
-    enum Keys { CANDIDATE_NAME }
+    enum Keys { CANDIDATE_NAME, CANDIDATE_PARTY }
 
     private final ElectionsService electionsService;
     private final int electionId;
@@ -55,6 +55,7 @@ public class CandidatesMenu extends ChildMenuImp {
         public String removedMsg = "<yellow>Candidate removed.</yellow>";
         public String removeFailedMsg = "<red><bold>Could not remove candidate.</bold></red>";
         public String nameLabel = "<aqua>Candidate name</aqua>";
+        public String partyLabel = "<aqua>Party (optional)</aqua>";
         public String addBtn = "<green><bold>Add</bold></green>";
         public String nameEmptyMsg = "<red><bold>Name cannot be empty.</bold></red>";
         public String addFailedMsg = "<red><bold>Could not add candidate.</bold></red>";
@@ -83,8 +84,9 @@ public class CandidatesMenu extends ChildMenuImp {
         } else {
             dialogBuilder.addBody(DialogBody.plainMessage(miniMessage(config.currentHeader, null)));
             for (Candidate candidate : election.getCandidates()) {
-                Component label = miniMessage("<gray>#" + candidate.getId() + "</gray> ")
-                        .append(miniMessage("<white><bold>" + candidate.getName() + "</bold></white>", null));
+                String base = "<gray>#" + candidate.getId() + "</gray> <white><bold>" + candidate.getName() + "</bold></white>";
+                String withParty = (candidate.getParty() == null || candidate.getParty().isBlank()) ? base : base + " <gray>(" + candidate.getParty() + ")</gray>";
+                Component label = miniMessage(withParty, null);
                 int candidateId = candidate.getId();
                 dialogBuilder.button(miniMessage(config.removePrefix, null).append(label), context -> {
                     // Offload removal to async thread
@@ -107,8 +109,10 @@ public class CandidatesMenu extends ChildMenuImp {
         }
 
         dialogBuilder.addInput(DialogInput.text(Keys.CANDIDATE_NAME.name(), miniMessage(config.nameLabel, null)).labelVisible(true).build());
+        dialogBuilder.addInput(DialogInput.text(Keys.CANDIDATE_PARTY.name(), miniMessage(config.partyLabel, null)).labelVisible(true).build());
         dialogBuilder.buttonWithPlayer(miniMessage(config.addBtn, null), null, Duration.ofMinutes(3), 1, (playerActor, response) -> {
             String name = response.getText(Keys.CANDIDATE_NAME.name());
+            String party = response.getText(Keys.CANDIDATE_PARTY.name());
             if (name == null || name.isBlank()) {
                 playerActor.sendMessage(miniMessage(config.nameEmptyMsg, null));
                 new CandidatesMenu(playerActor, getParentMenu(), electionsService, electionId).open();
@@ -119,7 +123,7 @@ public class CandidatesMenu extends ChildMenuImp {
             new BukkitRunnable() {
                 @Override
                 public void run() {
-                    Optional<Candidate> added = electionsService.addCandidate(electionId, name, playerActor.getName());
+                    Optional<Candidate> added = electionsService.addCandidate(electionId, name, party, playerActor.getName());
                     new BukkitRunnable() {
                         @Override
                         public void run() {

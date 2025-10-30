@@ -56,6 +56,8 @@ public interface ElectionsService {
 
     // Candidates
     CompletableFuture<Optional<Candidate>> addCandidateAsync(int electionId, String name, String actor);
+    /** Adds a candidate with an optional party name (null/blank to omit). */
+    CompletableFuture<Optional<Candidate>> addCandidateAsync(int electionId, String name, String party, String actor);
     CompletableFuture<Boolean> removeCandidateAsync(int electionId, int candidateId, String actor);
 
     // Polls
@@ -101,6 +103,8 @@ public interface ElectionsService {
     default boolean setDuration(int electionId, Integer days, TimeDto time, String actor) { return setDurationAsync(electionId, days, time, actor).join(); }
     default boolean setBallotMode(int electionId, BallotMode mode, String actor) { return setBallotModeAsync(electionId, mode, actor).join(); }
     default Optional<Candidate> addCandidate(int electionId, String name, String actor) { return addCandidateAsync(electionId, name, actor).join(); }
+    /** Synchronous convenience to add with a party (null/blank allowed). */
+    default Optional<Candidate> addCandidate(int electionId, String name, String party, String actor) { return addCandidateAsync(electionId, name, party, actor).join(); }
     default boolean removeCandidate(int electionId, int candidateId, String actor) { return removeCandidateAsync(electionId, candidateId, actor).join(); }
     default Optional<Poll> addPoll(int electionId, String world, int x, int y, int z, String actor) { return addPollAsync(electionId, world, x, y, z, actor).join(); }
     default boolean removePoll(int electionId, String world, int x, int y, int z, String actor) { return removePollAsync(electionId, world, x, y, z, actor).join(); }

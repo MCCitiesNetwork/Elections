@@ -12,4 +12,6 @@ public interface Candidate {
     int getId();
     /** Display name of the candidate (non-null, may be empty). */
     String getName();
+    /** Optional party name for the candidate; may be null or empty if not set. */
+    String getParty();
 }

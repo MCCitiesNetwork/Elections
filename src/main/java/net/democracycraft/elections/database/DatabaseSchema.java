@@ -62,6 +62,10 @@ public class DatabaseSchema {
                 st.execute("ALTER TABLE `elections` ADD COLUMN `ballotMode` VARCHAR(32) NULL AFTER `durationSecond`");
             } catch (Exception ignored) {}
 
+            try (var st = conn.createStatement()) {
+                st.execute("ALTER TABLE `candidates` ADD COLUMN `party` VARCHAR(128) NULL AFTER `name`");
+            } catch (Exception ignored) {}
+
             // requirements 1:1
             try (var st = conn.createStatement()) {
                 st.execute("ALTER TABLE `election_requirements` ADD CONSTRAINT `fk_req_election` FOREIGN KEY (`electionId`) REFERENCES `elections`(`id`) ON DELETE RESTRICT ON UPDATE RESTRICT");

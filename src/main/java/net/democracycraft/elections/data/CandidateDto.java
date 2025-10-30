@@ -9,6 +9,8 @@ package net.democracycraft.elections.data;
 public class CandidateDto implements Dto {
     private final int id;
     private final String name;
+    /** Optional political party or group; may be null. */
+    private String party;
     private final String headDatabaseId;
     /**
      * Optional serialized ItemStack bytes representing the candidate head icon.
@@ -17,7 +19,7 @@ public class CandidateDto implements Dto {
     private byte[] headItemBytes;
 
     public CandidateDto(int id, String name) {
-        this(id, name, null);
+        this(id, name, (String) null);
     }
 
     public CandidateDto(int id, String name, String headDatabaseId) {
@@ -28,6 +30,17 @@ public class CandidateDto implements Dto {
 
     public int getId() { return id; }
     public String getName() { return name; }
+
+    /**
+     * Optional party name for the candidate; may be null.
+     */
+    public String getParty() { return party; }
+
+    /**
+     * Sets or clears the optional party name.
+     */
+    public void setParty(String party) { this.party = (party == null || party.isBlank()) ? null : party; }
+
     public String getHeadDatabaseId() { return headDatabaseId; }
 
     /**
