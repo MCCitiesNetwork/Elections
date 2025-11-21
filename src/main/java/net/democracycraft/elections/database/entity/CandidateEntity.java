@@ -14,5 +14,7 @@ public class CandidateEntity {
     public int electionId;
     /** Candidate display name. */
     public String name;
+    /** Optional political party or group; nullable. */
+    public String party;
     public CandidateEntity() {}
 }

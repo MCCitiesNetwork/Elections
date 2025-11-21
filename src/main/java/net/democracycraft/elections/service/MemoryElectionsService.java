@@ -190,12 +190,17 @@ public class MemoryElectionsService implements ElectionsService {
     }
 
     public synchronized Optional<Candidate> addCandidate(int electionId, String name, String actor) {
+        return addCandidate(electionId, name, null, actor);
+    }
+
+    public synchronized Optional<Candidate> addCandidate(int electionId, String name, String party, String actor) {
         ElectionDto dto = elections.get(electionId);
         if (dto == null) return Optional.empty();
         int nextId = dto.getCandidates().stream().mapToInt(CandidateDto::getId).max().orElse(0) + 1;
         CandidateDto c = new CandidateDto(nextId, name);
+        c.setParty(party);
         dto.addCandidate(c);
-        dto.addStatusChange(new StatusChangeDto(now(), StateChangeType.CANDIDATE_ADDED, actor, "id=" + c.getId() + ",name=" + c.getName()));
+        dto.addStatusChange(new StatusChangeDto(now(), StateChangeType.CANDIDATE_ADDED, actor, "id=" + c.getId() + ",name=" + c.getName() + (c.getParty()==null?"":" ,party="+c.getParty())));
         return Optional.of(wrapCandidate(c));
     }
 
@@ -421,7 +426,9 @@ public class MemoryElectionsService implements ElectionsService {
             electionDto.setDurationTime(this.getDurationTime());
 
             for (Candidate c : this.getCandidates()) {
-                electionDto.addCandidate(new CandidateDto(c.getId(), c.getName()));
+                CandidateDto cd = new CandidateDto(c.getId(), c.getName());
+                cd.setParty(c.getParty());
+                electionDto.addCandidate(cd);
             }
             this.getPolls().forEach(p -> electionDto.addPoll(new PollDto(p.getWorld(), p.getX(), p.getY(), p.getZ())));
 
@@ -473,6 +480,7 @@ public class MemoryElectionsService implements ElectionsService {
     private record CandidateView(CandidateDto dto) implements Candidate {
         @Override public int getId() { return dto.getId(); }
         @Override public String getName() { return dto.getName(); }
+        @Override public String getParty() { return dto.getParty(); }
     }
 
     private record PollView(PollDto dto) implements Poll {
@@ -513,6 +521,7 @@ public class MemoryElectionsService implements ElectionsService {
     @Override public CompletableFuture<Boolean> setDurationAsync(int electionId, Integer days, TimeDto time, String actor) { return CompletableFuture.completedFuture(setDuration(electionId, days, time, actor)); }
     @Override public CompletableFuture<Boolean> setBallotModeAsync(int electionId, BallotMode mode, String actor) { return CompletableFuture.completedFuture(setBallotMode(electionId, mode, actor)); }
     @Override public CompletableFuture<Optional<Candidate>> addCandidateAsync(int electionId, String name, String actor) { return CompletableFuture.completedFuture(addCandidate(electionId, name, actor)); }
+    @Override public CompletableFuture<Optional<Candidate>> addCandidateAsync(int electionId, String name, String party, String actor) { return CompletableFuture.completedFuture(addCandidate(electionId, name, party, actor)); }
     @Override public CompletableFuture<Boolean> removeCandidateAsync(int electionId, int candidateId, String actor) { return CompletableFuture.completedFuture(removeCandidate(electionId, candidateId, actor)); }
     @Override public CompletableFuture<Optional<Poll>> addPollAsync(int electionId, String world, int x, int y, int z, String actor) { return CompletableFuture.completedFuture(addPoll(electionId, world, x, y, z, actor)); }
     @Override public CompletableFuture<Boolean> removePollAsync(int electionId, String world, int x, int y, int z, String actor) { return CompletableFuture.completedFuture(removePoll(electionId, world, x, y, z, actor)); }

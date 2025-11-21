@@ -55,8 +55,10 @@ public class PreferentialBallotMenu extends ChildMenuImp {
         public String submitted = "<green><bold>Ballot submitted.</bold></green>";
         public String clearBtn = "<yellow>Clear</yellow>";
         public String backBtn = "<red><bold>Back</bold></red>";
-        public String rankForFormat = "<aqua>Rank (1..%max%) for %candidate_name%</aqua>";
-        public String yamlHeader = "PreferentialBallotMenu configuration. Placeholders: %election_title%, %min%, %max%, %rank%, %candidate_name%.";
+        /** Rank input label for a candidate. Placeholders: %max%, %candidate_name%, %candidate_party%. */
+        public String rankForFormat = "<aqua>Rank (1..%max%) for %candidate_name% (%candidate_party%)</aqua>";
+        /** YAML header with supported placeholders. */
+        public String yamlHeader = "PreferentialBallotMenu configuration. Placeholders: %election_title%, %min%, %max%, %rank%, %candidate_name%, %candidate_party%. ";
         /** Loading dialog title shown while submitting. */
         public String loadingTitle = "<gold><bold>Submitting</bold></gold>";
         /** Loading dialog message shown while submitting. */
@@ -64,7 +66,10 @@ public class PreferentialBallotMenu extends ChildMenuImp {
         /** Sound to play when submission succeeds. */
         public SoundSpec successSound = new SoundSpec();
         public String valueGrayFormat = "<gray>%value%</gray>";
-        public String candidateNameLabelFormat = "<gray>%candidate_name%</gray>";
+        /** Candidate checkbox label format. Placeholders: %candidate_name%, %candidate_party%. */
+        public String candidateNameLabelFormat = "<gray>%candidate_name% (%candidate_party%)</gray>";
+        /** Label to use when a candidate has no party set (null/blank). */
+        public String partyUnknown = "Independent";
         public Config() {}
     }
 
@@ -108,8 +113,11 @@ public class PreferentialBallotMenu extends ChildMenuImp {
             rankKeyToId.put(rankKey, candidate.getId());
             HeadUtil.updateHeadItemBytesAsync(electionsService, electionId, candidate.getId(), candidate.getName());
             dialogBuilder.addBody(DialogBody.item(HeadUtil.headFromBytesOrName(candidate.getId(), candidate.getName())).showTooltip(true).build());
-            dialogBuilder.addInput(DialogInput.bool(selectKey, miniMessage(applyPlaceholders(config.candidateNameLabelFormat, Map.of("%candidate_name%", candidate.getName())), null)).initial(false).build());
-            dialogBuilder.addInput(DialogInput.text(rankKey, miniMessage(applyPlaceholders(config.rankForFormat, Map.of("%max%", String.valueOf(maxRank), "%candidate_name%", candidate.getName())), null)).labelVisible(true).build());
+            String party = candidate.getParty();
+            if (party == null || party.isBlank()) party = config.partyUnknown;
+            Map<String,String> cph = Map.of("%candidate_name%", candidate.getName(), "%candidate_party%", party, "%max%", String.valueOf(maxRank));
+            dialogBuilder.addInput(DialogInput.bool(selectKey, miniMessage(applyPlaceholders(config.candidateNameLabelFormat, cph), null)).initial(false).build());
+            dialogBuilder.addInput(DialogInput.text(rankKey, miniMessage(applyPlaceholders(config.rankForFormat, cph), null)).labelVisible(true).build());
         }
 
         dialogBuilder.buttonWithPlayer(miniMessage(config.submitBtn), null, (playerActor, response) -> {

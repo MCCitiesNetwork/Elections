@@ -46,38 +46,65 @@ public class CandidateListMenu extends ChildMenuImp {
 
     /** Config DTO for this menu. */
     public static class Config implements Serializable {
+        /** Title to use when election is missing. */
         public String titleFallback = "<gold><bold>Ballot</bold></gold>";
+        /** Message to show when election is not found. */
         public String notFound = "<red><bold>Election not found.</bold></red>";
+        /** Title format. Placeholders: %election_title%. */
         public String titleFormat = "<gold><bold>%election_title% Candidates</bold></gold>";
+        /** Instruction for block voting. Placeholder: %min%. */
         public String blockInstr = "<gray>Select exactly <white><bold>%min%</bold></white> candidates.</gray>";
+        /** Instruction for preferential voting. Placeholder: %min%. */
         public String prefInstr = "<gray>Assign unique ranks starting at 1. Minimum preferences: <white><bold>%min%</bold></white></gray>";
+        /** Label shown before selected count. */
         public String selectedLabel = "<aqua>Selected: </aqua>";
+        /** Submit button label. */
         public String submitBtn = "<green><bold>Submit</bold></green>";
+        /** Clear button label. */
         public String clearBtn = "<yellow>Clear all</yellow>";
+        /** Clear confirmation button label. */
         public String clearConfirmBtn = "<yellow>Confirm Clear</yellow>";
+        /** Back button label. */
         public String backBtn = "<red><bold>Back</bold></red>";
+        /** Next page button label. */
         public String nextBtn = "<gray>Next ▶</gray>";
+        /** Previous page button label. */
         public String prevBtn = "<gray>◀ Prev</gray>";
 
+        /** Error shown when block ballot does not meet exact selection count. Placeholder: %min%. */
         public String mustSelectExactly = "<red><bold>You must select exactly %min% candidates.</bold></red>";
+        /** Error shown when submission fails. */
         public String submissionFailed = "<red><bold>Submission failed. Are you eligible or already voted?</bold></red>";
+        /** Message shown when ballot is submitted. */
         public String submitted = "<green><bold>Ballot submitted.</bold></green>";
+        /** Error when no preferences set. */
         public String noPrefs = "<red><bold>No preferences set.</bold></red>";
+        /** Error when rank is invalid. Placeholder: %rank%. */
         public String invalidRank = "<red><bold>Invalid rank: %rank%</bold></red>";
+        /** Error when duplicate rank detected. Placeholder: %rank%. */
         public String duplicateRank = "<red><bold>Duplicate rank: %rank%</bold></red>";
+        /** Error when fewer than minimum preferences selected. Placeholder: %min%. */
         public String selectAtLeast = "<red><bold>Select at least %min% preferences.</bold></red>";
-        public String yamlHeader = "CandidateListMenu configuration. Placeholders: %election_title%, %min%, %rank%.";
+        /** Header comment for generated YAML. Lists supported placeholders. */
+        public String yamlHeader = "CandidateListMenu configuration. Placeholders: %election_title%, %min%, %rank%, %candidate_name%, %candidate_party%.";
         /** Loading dialog title shown while submitting. */
         public String loadingTitle = "<gold><bold>Submitting</bold></gold>";
         /** Loading dialog message shown while submitting. */
         public String loadingMessage = "<gray><italic>Submitting your ballot…</italic></gray>";
         /** Sound to play when submission succeeds. */
         public SoundSpec successSound = new SoundSpec();
+        /** Tag appended when a candidate is currently selected in Block system. */
         public String selectedTag = " <gray>[Selected]</gray>";
+        /** Tag format appended showing the rank in Preferential system. Placeholder: %rank%. */
         public String rankTagFormat = " <gray>[%rank%]</gray>";
-        public String candidateLabelFormat = "<white><bold>%candidate_name%</bold></white>%state%";
+        /** Label format for each candidate in the list. Placeholders: %candidate_name%, %candidate_party%, %state%. */
+        public String candidateLabelFormat = "<white><bold>%candidate_name%</bold></white> <gray>(%candidate_party%)</gray>%state%";
+        /** Generic gray value wrapper format. Placeholder: %value%. */
         public String valueGrayFormat = "<gray>%value%</gray>";
+        /** Title for the clear confirmation dialog. */
         public String clearConfirmTitle = "<yellow><bold>Clear all selections?</bold></yellow>";
+        /** Label to use when a candidate has no party set (null/blank). */
+        public String partyUnknown = "Independent";
         public Config() {}
     }
 
@@ -127,7 +154,13 @@ public class CandidateListMenu extends ChildMenuImp {
                 Integer rankValue = session.getRank(candidate.getId());
                 stateText = (rankValue != null) ? applyPlaceholders(config.rankTagFormat, Map.of("%rank%", String.valueOf(rankValue))) : "";
             }
-            String labelMini = applyPlaceholders(config.candidateLabelFormat, Map.of("%candidate_name%", candidate.getName(), "%state%", stateText));
+            String party = candidate.getParty();
+            if (party == null || party.isBlank()) party = config.partyUnknown;
+            String labelMini = applyPlaceholders(config.candidateLabelFormat, Map.of(
+                    "%candidate_name%", candidate.getName(),
+                    "%candidate_party%", party,
+                    "%state%", stateText
+            ));
             dialogBuilder.button(miniMessage(labelMini, null), context -> new CandidateVoteMenu(context.player(), this.getParentMenu(), electionsService, electionId, candidate.getId()).open());
         }
         if (page > 0) dialogBuilder.button(miniMessage(config.prevBtn, placeholders), c -> new CandidateListMenu(c.player(), getParentMenu(), electionsService, electionId, page - 1).open());

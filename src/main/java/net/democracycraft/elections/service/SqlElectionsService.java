@@ -129,6 +129,7 @@ public class SqlElectionsService implements ElectionsService {
         }
         for (CandidateEntity cRow : schema.candidates().findAllBy("electionId", id, "id")) {
             CandidateDto cDto = new CandidateDto(cRow.id, cRow.name);
+            cDto.setParty(cRow.party);
             CandidateHeadItemEntity head = schema.candidateHeadItems().findBy("candidateId", cRow.id);
             if (head != null) cDto.setHeadItemBytes(head.headItemBytes);
             e.addCandidate(cDto);
@@ -411,6 +412,10 @@ public class SqlElectionsService implements ElectionsService {
     }
 
     public Optional<Candidate> addCandidate(int electionId, String name, String actor) {
+        return addCandidate(electionId, name, null, actor);
+    }
+
+    public Optional<Candidate> addCandidate(int electionId, String name, String party, String actor) {
         // Prevent duplicate candidate by (electionId, name)
         Map<String, Object> where = new HashMap<>();
         where.put("electionId", electionId);
@@ -421,9 +426,10 @@ public class SqlElectionsService implements ElectionsService {
         CandidateEntity row = new CandidateEntity();
         row.electionId = electionId;
         row.name = name;
+        row.party = (party == null || party.isBlank()) ? null : party;
         Integer id = schema.candidates().insertReturningIntKey(row);
         if (id == null) return Optional.empty();
-        logChange(electionId, StateChangeType.CANDIDATE_ADDED, actor, "id="+id+",name="+name);
+        logChange(electionId, StateChangeType.CANDIDATE_ADDED, actor, "id="+id+",name="+name + (row.party==null?"":" ,party="+row.party));
         refreshElection(electionId);
         return mem.getElection(electionId).flatMap(e -> e.getCandidates().stream().filter(c -> c.getId()==id).findFirst());
     }
@@ -658,6 +664,10 @@ public class SqlElectionsService implements ElectionsService {
 
     @Override public CompletableFuture<Optional<Candidate>> addCandidateAsync(int electionId, String name, String actor) {
         return CompletableFuture.supplyAsync(() -> addCandidate(electionId, name, actor), executor);
+    }
+
+    @Override public CompletableFuture<Optional<Candidate>> addCandidateAsync(int electionId, String name, String party, String actor) {
+        return CompletableFuture.supplyAsync(() -> addCandidate(electionId, name, party, actor), executor);
     }
 
     @Override public CompletableFuture<Boolean> removeCandidateAsync(int electionId, int candidateId, String actor) {

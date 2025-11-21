@@ -1,5 +1,6 @@
 package net.democracycraft.elections.ui.vote;
 
+
 import io.papermc.paper.dialog.Dialog;
 import io.papermc.paper.registry.data.dialog.DialogBase;
 import io.papermc.paper.registry.data.dialog.body.DialogBody;
@@ -51,7 +52,9 @@ public class SimpleBlockBallotMenu extends ChildMenuImp {
         public String notFound = "<red><bold>Election not found.</bold></red>";
         public String titleFormat = "<gold><bold>%election_title% Ballot (Simple Block)</bold></gold>";
         public String instruction = "<gray>Select exactly <white><bold>%min%</bold></white> candidates.</gray>";
+        /** Label shown next to state when candidate is selected. Placeholder: %candidate_name%, %candidate_party%. */
         public String optionSelected = "<gray>[Selected]</gray>";
+        /** Label shown next to state when candidate is not selected. Placeholder: %candidate_name%, %candidate_party%. */
         public String optionNotSelected = " ";
         public String selectedLabel = "<aqua>Selected: </aqua>";
         public String submitBtn = "<green><bold>Submit</bold></green>";
@@ -60,7 +63,8 @@ public class SimpleBlockBallotMenu extends ChildMenuImp {
         public String mustSelectExactly = "<red><bold>You must select exactly %min% candidates.</bold></red>";
         public String submissionFailed = "<red><bold>Submission failed. Are you eligible or already voted?</bold></red>";
         public String submitted = "<green><bold>Ballot submitted.</bold></green>";
-        public String yamlHeader = "SimpleBlockBallotMenu configuration. Placeholders: %election_title%, %min%, %candidate_name%.";
+        /** Header describing placeholders supported in this menu. */
+        public String yamlHeader = "SimpleBlockBallotMenu configuration. Placeholders: %election_title%, %min%, %candidate_name%, %candidate_party%.";
         /** Loading dialog title shown while submitting. */
         public String loadingTitle = "<gold><bold>Submitting</bold></gold>";
         /** Loading dialog message shown while submitting. */
@@ -68,7 +72,10 @@ public class SimpleBlockBallotMenu extends ChildMenuImp {
         /** Sound to play when submission succeeds. */
         public SoundSpec successSound = new SoundSpec();
         public String valueGrayFormat = "<gray>%value%</gray>";
-        public String candidateLabelFormat = "<white>%candidate_name%</white>";
+        /** Label format for each candidate row. Placeholders: %candidate_name%, %candidate_party%. */
+        public String candidateLabelFormat = "<white>%candidate_name%</white> <gray>(%candidate_party%)</gray>";
+        /** Label to use when a candidate has no party set (null/blank). */
+        public String partyUnknown = "Independent";
         public Config() {}
     }
 
@@ -109,11 +116,13 @@ public class SimpleBlockBallotMenu extends ChildMenuImp {
         for (Candidate c : election.getCandidates()) {
             String key = "SEL_" + c.getId();
             boolean selected = session.isSelected(c.getId());
+            String party = c.getParty();
+            if (party == null || party.isBlank()) party = config.partyUnknown;
             List<SingleOptionDialogInput.OptionEntry> entries = new java.util.ArrayList<>();
-            entries.add(SingleOptionDialogInput.OptionEntry.create("0", miniMessage(applyPlaceholders(config.optionNotSelected, Map.of("%candidate_name%", c.getName())), null), !selected));
-            entries.add(SingleOptionDialogInput.OptionEntry.create("1", miniMessage(applyPlaceholders(config.optionSelected, Map.of("%candidate_name%", c.getName())), null), selected));
+            entries.add(SingleOptionDialogInput.OptionEntry.create("0", miniMessage(applyPlaceholders(config.optionNotSelected, Map.of("%candidate_name%", c.getName(), "%candidate_party%", party)), null), !selected));
+            entries.add(SingleOptionDialogInput.OptionEntry.create("1", miniMessage(applyPlaceholders(config.optionSelected, Map.of("%candidate_name%", c.getName(), "%candidate_party%", party)), null), selected));
             dialogBuilder.addInput(DialogInput
-                    .singleOption(key, miniMessage(applyPlaceholders(config.candidateLabelFormat, Map.of("%candidate_name%", c.getName())), null), entries)
+                    .singleOption(key, miniMessage(applyPlaceholders(config.candidateLabelFormat, Map.of("%candidate_name%", c.getName(), "%candidate_party%", party)), null), entries)
                     .build());
         }
 

@@ -60,16 +60,17 @@ public class SimplePreferentialBallotMenu extends ChildMenuImp {
         public String submitted = "<green><bold>Ballot submitted.</bold></green>";
         public String invalidRank = "<red><bold>Invalid rank: %rank%</bold></red>";
         public String duplicateRank = "<red><bold>Duplicate rank: %rank%</bold></red>";
-        public String selectAtLeast = "<red><bold>Select at least %min% preferences.</bold></red>";
-        public String yamlHeader = "SimplePreferentialBallotMenu configuration. Placeholders: %election_title%, %min%, %candidate_name%, %rank%.";
+        public String selectAtLeast = "<red><bold>Select at least %min% preferences.</bold></red>";/** Header comment describing placeholders supported. */
+        public String yamlHeader = "SimplePreferentialBallotMenu configuration. Placeholders: %election_title%, %min%, %candidate_name%, %candidate_party%, %rank%.";
         /** Loading dialog title shown while submitting. */
         public String loadingTitle = "<gold><bold>Submitting</bold></gold>";
         /** Loading dialog message shown while submitting. */
         public String loadingMessage = "<gray><italic>Submitting your ballot…</italic></gray>";
-        /** Label format for each candidate selector. */
-        public String candidateLabelFormat = "<white>%candidate_name%</white>";
+        /** Label format for each candidate selector. Placeholders: %candidate_name%, %candidate_party%. */
+        public String candidateLabelFormat = "<white>%candidate_name%</white> <gray>(%candidate_party%)</gray>";
         /** Sound to play when submission succeeds. */
         public SoundSpec successSound = new SoundSpec();
+        public String partyUnknown = "Independent";
         public Config() {}
     }
 
@@ -109,14 +110,16 @@ public class SimplePreferentialBallotMenu extends ChildMenuImp {
         for (Candidate c : election.getCandidates()) {
 
             Integer current = session.getRank(c.getId());
+            String party = c.getParty();
+            if (party == null || party.isBlank()) party = config.partyUnknown;
             List<SingleOptionDialogInput.OptionEntry> entries = new ArrayList<>();
-            entries.add(SingleOptionDialogInput.OptionEntry.create("0", miniMessage(applyPlaceholders(config.optionNotRanked, Map.of("%candidate_name%", c.getName())), null), current == null));
+            entries.add(SingleOptionDialogInput.OptionEntry.create("0", miniMessage(applyPlaceholders(config.optionNotRanked, Map.of("%candidate_name%", c.getName(), "%candidate_party%", party)), null), current == null));
             for (int r = 1; r <= maxRank; r++) {
                 boolean init = current != null && current == r;
-                entries.add(SingleOptionDialogInput.OptionEntry.create(String.valueOf(r), miniMessage(applyPlaceholders(config.optionRankFormat, Map.of("%candidate_name%", c.getName(), "%rank%", String.valueOf(r))), null), init));
+                entries.add(SingleOptionDialogInput.OptionEntry.create(String.valueOf(r), miniMessage(applyPlaceholders(config.optionRankFormat, Map.of("%candidate_name%", c.getName(), "%candidate_party%", party, "%rank%", String.valueOf(r))), null), init));
             }
             String key = "RANK_" + c.getId();
-            Map<String,String> cph = Map.of("%candidate_name%", c.getName());
+            Map<String,String> cph = Map.of("%candidate_name%", c.getName(), "%candidate_party%", party);
             dialogBuilder.addInput(DialogInput.singleOption(key, miniMessage(applyPlaceholders(config.candidateLabelFormat, cph), null), entries)
                     .build());
         }

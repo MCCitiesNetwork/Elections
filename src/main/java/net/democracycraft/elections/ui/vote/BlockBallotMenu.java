@@ -56,13 +56,18 @@ public class BlockBallotMenu extends ChildMenuImp {
         public String submitted = "<green><bold>Ballot submitted.</bold></green>";
         public String clearBtn = "<yellow>Clear</yellow>";
         public String backBtn = "<red><bold>Back</bold></red>";
-        public String yamlHeader = "BlockBallotMenu configuration. Placeholders: %election_title%, %min%, %x%, %y%, %z%.";
+        /** Header describing placeholders supported in this menu. */
+        public String yamlHeader = "BlockBallotMenu configuration. Placeholders: %election_title%, %min%, %candidate_name%, %candidate_party%, %x%, %y%, %z%.";
         /** Loading dialog title shown while submitting. */
         public String loadingTitle = "<gold><bold>Submitting</bold></gold>";
         /** Loading dialog message shown while submitting. */
         public String loadingMessage = "<gray><italic>Submitting your ballot…</italic></gray>";
         /** Sound to play when submission succeeds. */
         public SoundSpec successSound = new SoundSpec();
+        /** Label format for each candidate row. Placeholders: %candidate_name%, %candidate_party%. */
+        public String candidateLabelFormat = "<gray>%candidate_name% (%candidate_party%)</gray>";
+        /** Label to use when a candidate has no party set (null/blank). */
+        public String partyUnknown = "Independent";
         public Config() {}
     }
 
@@ -102,7 +107,12 @@ public class BlockBallotMenu extends ChildMenuImp {
             HeadUtil.updateHeadItemBytesAsync(electionsService, electionId, candidate.getId(), candidate.getName());
             ItemStack headItem = HeadUtil.headFromBytesOrName(electionsService, electionId, candidate.getId(), candidate.getName());
             dialogBuilder.addBody(DialogBody.item(headItem).showTooltip(true).build());
-            dialogBuilder.addInput(DialogInput.bool(key, miniMessage("<gray>" + candidate.getName() + "</gray>")).initial(false).build());
+            String party = candidate.getParty();
+            if (party == null || party.isBlank()) party = config.partyUnknown;
+            dialogBuilder.addInput(DialogInput.bool(key, miniMessage(applyPlaceholders(config.candidateLabelFormat, Map.of(
+                    "%candidate_name%", candidate.getName(),
+                    "%candidate_party%", party
+            )), null)).initial(false).build());
         }
 
         dialogBuilder.buttonWithPlayer(miniMessage(config.submitBtn, placeholders), null, (playerActor, response) -> {
