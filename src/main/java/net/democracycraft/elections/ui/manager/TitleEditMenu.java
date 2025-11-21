@@ -8,14 +8,13 @@ import net.democracycraft.elections.Elections;
 import net.democracycraft.elections.api.service.ElectionsService;
 import net.democracycraft.elections.ui.ChildMenuImp;
 import net.democracycraft.elections.api.ui.ParentMenu;
-import net.democracycraft.elections.ui.dialog.AutoDialog;
+import net.democracycraft.elections.api.ui.AutoDialog;
 import net.democracycraft.elections.ui.common.LoadingMenu;
 import net.kyori.adventure.text.Component;
 import org.bukkit.entity.Player;
 import org.bukkit.scheduler.BukkitRunnable;
 
 import java.io.Serializable;
-import java.time.Duration;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -81,7 +80,7 @@ public class TitleEditMenu extends ChildMenuImp {
             dialogBuilder.addBody(DialogBody.plainMessage(currentTitle));
         }
         dialogBuilder.addInput(DialogInput.text(Keys.TITLE.name(), miniMessage(applyPlaceholders(config.inputLabel, placeholders), null)).labelVisible(true).build());
-        dialogBuilder.buttonWithPlayer(miniMessage(config.saveBtn, placeholders), null, Duration.ofMinutes(5), 1, (playerActor, response) -> {
+        dialogBuilder.buttonWithPlayer(miniMessage(config.saveBtn, placeholders), null, (playerActor, response) -> {
             String newTitleText = response.getText(Keys.TITLE.name());
             if (newTitleText == null || newTitleText.isBlank()) {
                 playerActor.sendMessage(miniMessage(config.emptyError, placeholders));

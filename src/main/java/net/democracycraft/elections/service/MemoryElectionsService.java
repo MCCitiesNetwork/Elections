@@ -109,12 +109,12 @@ public class MemoryElectionsService implements ElectionsService {
         } else if (old == null || requirements == null) {
             changed = true;
         } else {
-            changed = !Objects.equals(old.getPermissions(), requirements.getPermissions())
-                    || old.getMinActivePlaytimeMinutes() != requirements.getMinActivePlaytimeMinutes();
+            changed = !Objects.equals(old.permissions(), requirements.permissions())
+                    || old.minActivePlaytimeMinutes() != requirements.minActivePlaytimeMinutes();
         }
         if (!changed) return true;
         dto.setRequirements(requirements);
-        String details = (requirements == null) ? "null" : "perms=" + (requirements.getPermissions()==null?0:requirements.getPermissions().size()) + ",minutes=" + requirements.getMinActivePlaytimeMinutes();
+        String details = (requirements == null) ? "null" : "perms=" + (requirements.permissions()==null?0:requirements.permissions().size()) + ",minutes=" + requirements.minActivePlaytimeMinutes();
         dto.addStatusChange(new StatusChangeDto(now(), StateChangeType.REQUIREMENTS_CHANGED, actor, details));
         return true;
     }
@@ -214,7 +214,7 @@ public class MemoryElectionsService implements ElectionsService {
         for (ElectionDto other : elections.values()) {
             if (other.getId() == electionId) continue;
             for (PollDto p0 : other.getPolls()) {
-                if (p0.getWorld().equalsIgnoreCase(world) && p0.getX()==x && p0.getY()==y && p0.getZ()==z) {
+                if (p0.world().equalsIgnoreCase(world) && p0.x()==x && p0.y()==y && p0.z()==z) {
                     return Optional.empty();
                 }
             }
@@ -237,7 +237,7 @@ public class MemoryElectionsService implements ElectionsService {
         ElectionDto dto = elections.get(electionId);
         if (dto == null) throw new IllegalArgumentException("Election not found");
         Optional<VoterDto> existing = dto.getVotersById().values().stream()
-                .filter(v -> v.getName().equalsIgnoreCase(name))
+                .filter(v -> v.name().equalsIgnoreCase(name))
                 .findFirst();
         if (existing.isPresent()) return wrapVoter(existing.get());
         int nextId = dto.getVotersById().keySet().stream().mapToInt(i -> i).max().orElse(0) + 1;
@@ -476,10 +476,10 @@ public class MemoryElectionsService implements ElectionsService {
     }
 
     private record PollView(PollDto dto) implements Poll {
-        @Override public String getWorld() { return dto.getWorld(); }
-        @Override public int getX() { return dto.getX(); }
-        @Override public int getY() { return dto.getY(); }
-        @Override public int getZ() { return dto.getZ(); }
+        @Override public String getWorld() { return dto.world(); }
+        @Override public int getX() { return dto.x(); }
+        @Override public int getY() { return dto.y(); }
+        @Override public int getZ() { return dto.z(); }
     }
 
     private record VoteView(BallotDto dto) implements Vote {
@@ -492,8 +492,8 @@ public class MemoryElectionsService implements ElectionsService {
     }
 
     private record VoterView(VoterDto dto) implements Voter {
-        @Override public int getId() { return dto.getId(); }
-        @Override public String getName() { return dto.getName(); }
+        @Override public int getId() { return dto.id(); }
+        @Override public String getName() { return dto.name(); }
     }
 
     // --- Async API wrappers ---

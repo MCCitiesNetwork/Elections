@@ -10,7 +10,7 @@ import net.democracycraft.elections.api.service.ElectionsService;
 import net.democracycraft.elections.api.ui.ParentMenu;
 import net.democracycraft.elections.data.VotingSystem;
 import net.democracycraft.elections.ui.ChildMenuImp;
-import net.democracycraft.elections.ui.dialog.AutoDialog;
+import net.democracycraft.elections.api.ui.AutoDialog;
 import net.democracycraft.elections.ui.common.LoadingMenu;
 import net.democracycraft.elections.util.sound.SoundHelper;
 import net.democracycraft.elections.util.sound.SoundSpec;
@@ -133,7 +133,7 @@ public class CandidateListMenu extends ChildMenuImp {
         if (page > 0) dialogBuilder.button(miniMessage(config.prevBtn, placeholders), c -> new CandidateListMenu(c.player(), getParentMenu(), electionsService, electionId, page - 1).open());
         if (to < all.size()) dialogBuilder.button(miniMessage(config.nextBtn, placeholders), c -> new CandidateListMenu(c.player(), getParentMenu(), electionsService, electionId, page + 1).open());
 
-        dialogBuilder.buttonWithPlayer(miniMessage(config.submitBtn, placeholders), null, java.time.Duration.ofMinutes(5), 1, (playerActor, response) -> {
+        dialogBuilder.buttonWithPlayer(miniMessage(config.submitBtn, placeholders), null, (playerActor, response) -> {
             if (system == VotingSystem.BLOCK) {
                 List<Integer> pickedCandidates = session.getSelected();
                 int minimumRequired = Math.max(1, election.getMinimumVotes());

@@ -7,11 +7,10 @@ import io.papermc.paper.registry.data.dialog.input.DialogInput;
 import net.democracycraft.elections.api.ui.ParentMenu;
 import net.democracycraft.elections.data.TimeDto;
 import net.democracycraft.elections.ui.ChildMenuImp;
-import net.democracycraft.elections.ui.dialog.AutoDialog;
+import net.democracycraft.elections.api.ui.AutoDialog;
 import org.bukkit.entity.Player;
 
 import java.io.Serializable;
-import java.time.Duration;
 
 public class ElectionCreateDurationMenu extends ChildMenuImp {
 
@@ -67,7 +66,7 @@ public class ElectionCreateDurationMenu extends ChildMenuImp {
         dialogBuilder.addInput(DialogInput.numberRange(Keys.HOURS.name(), miniMessage(config.hoursLabel), config.hoursMin, config.hoursMax).step(config.hoursStep).initial(hoursInit).build());
         dialogBuilder.addInput(DialogInput.numberRange(Keys.MINUTES.name(), miniMessage(config.minutesLabel), config.minutesMin, config.minutesMax).step(config.minutesStep).initial(minutesInit).build());
 
-        dialogBuilder.buttonWithPlayer(miniMessage(config.nextBtn), null, Duration.ofMinutes(5), 1, (playerActor, response) -> {
+        dialogBuilder.buttonWithPlayer(miniMessage(config.nextBtn), null, (playerActor, response) -> {
             Float daysVal = response.getFloat(Keys.DAYS.name());
             Float hoursVal = response.getFloat(Keys.HOURS.name());
             Float minutesVal = response.getFloat(Keys.MINUTES.name());

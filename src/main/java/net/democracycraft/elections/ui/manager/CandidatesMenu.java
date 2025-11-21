@@ -11,14 +11,13 @@ import net.democracycraft.elections.api.service.ElectionsService;
 import net.democracycraft.elections.ui.ChildMenuImp;
 import net.democracycraft.elections.api.ui.ParentMenu;
 import net.democracycraft.elections.util.HeadUtil;
-import net.democracycraft.elections.ui.dialog.AutoDialog;
+import net.democracycraft.elections.api.ui.AutoDialog;
 import net.democracycraft.elections.ui.common.LoadingMenu;
 import net.kyori.adventure.text.Component;
 import org.bukkit.entity.Player;
 import org.bukkit.scheduler.BukkitRunnable;
 
 import java.io.Serializable;
-import java.time.Duration;
 import java.util.Map;
 import java.util.Optional;
 
@@ -107,7 +106,7 @@ public class CandidatesMenu extends ChildMenuImp {
         }
 
         dialogBuilder.addInput(DialogInput.text(Keys.CANDIDATE_NAME.name(), miniMessage(config.nameLabel, null)).labelVisible(true).build());
-        dialogBuilder.buttonWithPlayer(miniMessage(config.addBtn, null), null, Duration.ofMinutes(3), 1, (playerActor, response) -> {
+        dialogBuilder.buttonWithPlayer(miniMessage(config.addBtn, null), null, (playerActor, response) -> {
             String name = response.getText(Keys.CANDIDATE_NAME.name());
             if (name == null || name.isBlank()) {
                 playerActor.sendMessage(miniMessage(config.nameEmptyMsg, null));

@@ -1,5 +1,6 @@
 package net.democracycraft.elections.ui.list;
 
+import io.papermc.paper.dialog.Dialog;
 import io.papermc.paper.registry.data.dialog.DialogBase;
 import io.papermc.paper.registry.data.dialog.body.DialogBody;
 import net.democracycraft.elections.api.model.Election;
@@ -7,7 +8,7 @@ import net.democracycraft.elections.api.service.ElectionsService;
 import net.democracycraft.elections.api.ui.ParentMenu;
 import net.democracycraft.elections.ui.ChildMenuImp;
 import net.democracycraft.elections.ui.manager.ElectionManagerMenu;
-import net.democracycraft.elections.ui.dialog.AutoDialog;
+import net.democracycraft.elections.api.ui.AutoDialog;
 import net.kyori.adventure.text.Component;
 import org.bukkit.entity.Player;
 
@@ -52,7 +53,7 @@ public class ElectionListItemMenu extends ChildMenuImp {
         public Config() {}
     }
 
-    private io.papermc.paper.dialog.Dialog build() {
+    private Dialog build() {
         Election election = electionsService.getElection(electionId).orElse(null);
         AutoDialog.Builder dialogBuilder = getAutoDialogBuilder();
 
@@ -64,7 +65,12 @@ public class ElectionListItemMenu extends ChildMenuImp {
             dialogBuilder.canCloseWithEscape(true);
             dialogBuilder.afterAction(DialogBase.DialogAfterAction.CLOSE);
             dialogBuilder.addBody(DialogBody.plainMessage(miniMessage(config.notFound, null)));
-            dialogBuilder.button(miniMessage(config.backBtn, null), context -> context.player().closeInventory());
+            dialogBuilder.button(miniMessage(config.backBtn, null), context -> {
+                Dialog parentDialog = parentMenu.getDialog();
+                if (parentDialog != null) {
+                    context.player().showDialog(parentDialog);
+                }
+            });
             return dialogBuilder.build();
         }
 

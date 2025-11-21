@@ -7,11 +7,10 @@ import io.papermc.paper.registry.data.dialog.input.DialogInput;
 import net.democracycraft.elections.api.ui.ParentMenu;
 import net.democracycraft.elections.data.VotingSystem;
 import net.democracycraft.elections.ui.ChildMenuImp;
-import net.democracycraft.elections.ui.dialog.AutoDialog;
+import net.democracycraft.elections.api.ui.AutoDialog;
 import org.bukkit.entity.Player;
 
 import java.io.Serializable;
-import java.time.Duration;
 
 /**
  * Create wizard step: System & Minimum votes. All texts are configurable via per-menu YAML.
@@ -66,7 +65,7 @@ public class ElectionCreateSystemMenu extends ChildMenuImp {
             new ElectionCreateSystemMenu(context.player(), wizard, draft).open();
         });
 
-        dialogBuilder.buttonWithPlayer(miniMessage(config.nextBtn, null), null, Duration.ofMinutes(3), 1, (playerActor, response) -> {
+        dialogBuilder.buttonWithPlayer(miniMessage(config.nextBtn, null), null, (playerActor, response) -> {
             Integer minVotes = null;
             String textInput = response.getText(Keys.MIN_VOTES_TEXT.name());
             int boundMin = Math.round(config.minVotesMin);

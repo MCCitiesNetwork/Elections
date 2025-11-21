@@ -5,7 +5,7 @@ import io.papermc.paper.registry.data.dialog.DialogBase;
 import io.papermc.paper.registry.data.dialog.body.DialogBody;
 import net.democracycraft.elections.api.service.ElectionsService;
 import net.democracycraft.elections.ui.ParentMenuImp;
-import net.democracycraft.elections.ui.dialog.AutoDialog;
+import net.democracycraft.elections.api.ui.AutoDialog;
 import org.bukkit.entity.Player;
 
 import java.io.Serializable;

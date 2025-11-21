@@ -10,13 +10,12 @@ import net.democracycraft.elections.api.service.ElectionsService;
 import net.democracycraft.elections.data.VotingSystem;
 import net.democracycraft.elections.ui.ChildMenuImp;
 import net.democracycraft.elections.api.ui.ParentMenu;
-import net.democracycraft.elections.ui.dialog.AutoDialog;
+import net.democracycraft.elections.api.ui.AutoDialog;
 import net.democracycraft.elections.ui.common.LoadingMenu;
 import org.bukkit.entity.Player;
 import org.bukkit.scheduler.BukkitRunnable;
 
 import java.io.Serializable;
-import java.time.Duration;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -136,7 +135,7 @@ public class SystemAndMinimumMenu extends ChildMenuImp {
             context.player().showDialog(confirm.build());
         });
 
-        dialogBuilder.buttonWithPlayer(miniMessage(config.saveMinBtn, placeholders), null, Duration.ofMinutes(3), 1, (playerActor, response) -> {
+        dialogBuilder.buttonWithPlayer(miniMessage(config.saveMinBtn, placeholders), null, (playerActor, response) -> {
             Integer minVotes = null;
             String textInput = response.getText(Keys.MIN_VOTES_TEXT.name());
             int boundMin = Math.round(config.minVotesMin);

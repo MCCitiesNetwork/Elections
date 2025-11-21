@@ -55,8 +55,8 @@ public class PollInteractListener implements Listener {
             return;
         }
         RequirementsDto req = election.getRequirements();
-        if (req != null && req.getPermissions() != null) {
-            for (String node : req.getPermissions()) {
+        if (req != null && req.permissions() != null) {
+            for (String node : req.permissions()) {
                 if (node == null || node.isBlank()) continue;
                 if (!player.hasPermission(node)) {
                     player.sendMessage("You are not eligible to vote in this election.");

@@ -84,7 +84,7 @@ public record CommandContext(
     public static String tsToString(TimeStampDto ts) {
         DateDto d = ts.date();
         TimeDto t = ts.time();
-        return String.format(Locale.ROOT, "%04d-%02d-%02d %02d:%02d:%02dZ", d.getYear(), d.getMonth(), d.getDay(), t.hour(), t.minute(), t.second());
+        return String.format(Locale.ROOT, "%04d-%02d-%02d %02d:%02d:%02dZ", d.year(), d.month(), d.day(), t.hour(), t.minute(), t.second());
     }
 
     public static TimeStampDto plusNow(int days, int hours, int minutes) {

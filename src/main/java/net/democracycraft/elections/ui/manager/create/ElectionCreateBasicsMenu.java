@@ -6,11 +6,10 @@ import io.papermc.paper.registry.data.dialog.body.DialogBody;
 import io.papermc.paper.registry.data.dialog.input.DialogInput;
 import net.democracycraft.elections.api.ui.ParentMenu;
 import net.democracycraft.elections.ui.ChildMenuImp;
-import net.democracycraft.elections.ui.dialog.AutoDialog;
+import net.democracycraft.elections.api.ui.AutoDialog;
 import org.bukkit.entity.Player;
 
 import java.io.Serializable;
-import java.time.Duration;
 
 /**
  * Create wizard step: Basics (title). All texts are configurable via data/menus/ElectionCreateBasicsMenu.yml.
@@ -58,7 +57,7 @@ public class ElectionCreateBasicsMenu extends ChildMenuImp {
         dialogBuilder.addBody(DialogBody.plainMessage(miniMessage(config.instruction)));
         dialogBuilder.addInput(DialogInput.text(Keys.TITLE.name(), miniMessage(config.titleLabel)).labelVisible(true).build());
 
-        dialogBuilder.buttonWithPlayer(miniMessage(config.nextBtn), null, Duration.ofMinutes(5), 1, (playerActor, response) -> {
+        dialogBuilder.buttonWithPlayer(miniMessage(config.nextBtn), null, (playerActor, response) -> {
             String titleInput = response.getText(Keys.TITLE.name());
             if (titleInput == null || titleInput.isBlank()) {
                 playerActor.sendMessage(miniMessage(config.emptyMsg));

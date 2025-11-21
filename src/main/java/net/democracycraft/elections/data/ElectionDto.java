@@ -74,10 +74,10 @@ public class ElectionDto implements Dto {
     public boolean removeCandidate(int candidateId) { return this.candidates.removeIf(c -> c.getId() == candidateId); }
 
     public void addPoll(PollDto dto) { this.polls.add(dto); }
-    public boolean removePoll(PollDto dto) { return this.polls.removeIf(p -> Objects.equals(p.getWorld(), dto.getWorld()) && p.getX()==dto.getX() && p.getY()==dto.getY() && p.getZ()==dto.getZ()); }
+    public boolean removePoll(PollDto dto) { return this.polls.removeIf(p -> Objects.equals(p.world(), dto.world()) && p.x()==dto.x() && p.y()==dto.y() && p.z()==dto.z()); }
 
     public void addBallot(BallotDto ballot) { this.ballots.add(ballot); }
-    public void addVoter(VoterDto voter) { this.votersById.put(voter.getId(), voter); }
+    public void addVoter(VoterDto voter) { this.votersById.put(voter.id(), voter); }
 
     /** Explicit alias for clarity. */
     public void appendBallot(BallotDto ballot) { this.ballots.add(ballot); }

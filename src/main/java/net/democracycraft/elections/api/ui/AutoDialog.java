@@ -1,4 +1,4 @@
-package net.democracycraft.elections.ui.dialog;
+package net.democracycraft.elections.api.ui;
 
 import io.papermc.paper.dialog.Dialog;
 import io.papermc.paper.dialog.DialogResponseView;
@@ -11,7 +11,6 @@ import io.papermc.paper.registry.data.dialog.action.DialogActionCallback;
 import io.papermc.paper.registry.data.dialog.body.DialogBody;
 import io.papermc.paper.registry.data.dialog.input.DialogInput;
 import io.papermc.paper.registry.data.dialog.type.DialogType;
-import net.democracycraft.elections.api.ui.ParentMenu;
 import net.kyori.adventure.audience.Audience;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.event.ClickCallback;
@@ -20,11 +19,13 @@ import org.bukkit.entity.Player;
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Objects;
 import java.util.function.BiConsumer;
 import java.util.function.Consumer;
 
 public class AutoDialog {
+    private static Duration DEFAULT_BUTTON_EXPIRE = Duration.ofMinutes(10);
+    private static int DEFAULT_BUTTON_MAX_USES = ClickCallback.UNLIMITED_USES;
+
     private final Dialog internal;
 
     private AutoDialog(Dialog internal) {
@@ -79,13 +80,7 @@ public class AutoDialog {
             return parentMenu;
         }
 
-        public Builder button(Component label, Component tooltip, Duration expireAfter, int maxUses, Consumer<Context> handler) {
-            Objects.requireNonNull(label);
-            ClickCallback.Options options = ClickCallback.Options.builder()
-                    .lifetime(expireAfter)
-                    .uses(maxUses)
-                    .build();
-
+        public Builder button(Component label, Component tooltip, Consumer<Context> handler) {
             DialogActionCallback callback = (response, audience) -> {
                 Player player = (audience instanceof Player) ? (Player) audience : null;
                 if (player == null) return;
@@ -93,7 +88,7 @@ public class AutoDialog {
                 handler.accept(ctx);
             };
 
-            DialogAction action = DialogInstancesProvider.instance().register(callback, options);
+            DialogAction action = DialogInstancesProvider.instance().register(callback, defaultButtonOptions());
 
             ActionButton btn = ActionButton.builder(label)
                     .tooltip(tooltip)
@@ -105,18 +100,13 @@ public class AutoDialog {
         }
 
         public Builder button(Component label, Consumer<Context> handler) {
-            return button(label, null, Duration.ofMinutes(5), 1, handler);
+            return button(label, null, handler);
         }
 
-        public Builder buttonWithResponse(Component label, Component tooltip, Duration expireAfter, int maxUses, BiConsumer<DialogResponseView, Audience> handler) {
-            ClickCallback.Options options = ClickCallback.Options.builder()
-                    .lifetime(expireAfter)
-                    .uses(maxUses)
-                    .build();
-
+        public Builder buttonWithResponse(Component label, Component tooltip, BiConsumer<DialogResponseView, Audience> handler) {
             DialogActionCallback callback = (response, audience) -> handler.accept(response, audience);
 
-            DialogAction action = DialogInstancesProvider.instance().register(callback, options);
+            DialogAction action = DialogInstancesProvider.instance().register(callback, defaultButtonOptions());
 
             ActionButton btn = ActionButton.builder(label)
                     .tooltip(tooltip)
@@ -127,19 +117,14 @@ public class AutoDialog {
             return this;
         }
 
-        public Builder buttonWithPlayer(Component label, Component tooltip, Duration expireAfter, int maxUses, BiConsumer<Player, DialogResponseView> handler) {
-            ClickCallback.Options options = ClickCallback.Options.builder()
-                    .lifetime(expireAfter)
-                    .uses(maxUses)
-                    .build();
-
+        public Builder buttonWithPlayer(Component label, Component tooltip, BiConsumer<Player, DialogResponseView> handler) {
             DialogActionCallback callback = (response, audience) -> {
                 Player player = (audience instanceof Player) ? (Player) audience : null;
                 if (player == null) return;
                 handler.accept(player, response);
             };
 
-            DialogAction action = DialogInstancesProvider.instance().register(callback, options);
+            DialogAction action = DialogInstancesProvider.instance().register(callback, defaultButtonOptions());
 
             ActionButton btn = ActionButton.builder(label)
                     .tooltip(tooltip)
@@ -189,9 +174,16 @@ public class AutoDialog {
                 } else {
                     builder.type(DialogInstancesProvider.instance().notice());
                 }
-             });
-         }
-     }
+            }
+            );
+        }
+        private ClickCallback.Options defaultButtonOptions() {
+            return ClickCallback.Options.builder()
+                    .lifetime(DEFAULT_BUTTON_EXPIRE)
+                    .uses(DEFAULT_BUTTON_MAX_USES)
+                    .build();
+        }
+    }
 
     public record Context(Player player, Audience audience, DialogResponseView response) {
     }

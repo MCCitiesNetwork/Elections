@@ -5,7 +5,7 @@ import io.papermc.paper.registry.data.dialog.DialogBase;
 import io.papermc.paper.registry.data.dialog.body.DialogBody;
 import net.democracycraft.elections.api.ui.ParentMenu;
 import net.democracycraft.elections.ui.ChildMenuImp;
-import net.democracycraft.elections.ui.dialog.AutoDialog;
+import net.democracycraft.elections.api.ui.AutoDialog;
 import net.kyori.adventure.text.Component;
 import org.bukkit.entity.Player;
 

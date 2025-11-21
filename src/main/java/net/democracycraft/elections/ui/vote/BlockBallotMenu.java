@@ -11,7 +11,7 @@ import net.democracycraft.elections.api.service.ElectionsService;
 import net.democracycraft.elections.ui.ChildMenuImp;
 import net.democracycraft.elections.api.ui.ParentMenu;
 import net.democracycraft.elections.util.HeadUtil;
-import net.democracycraft.elections.ui.dialog.AutoDialog;
+import net.democracycraft.elections.api.ui.AutoDialog;
 import net.democracycraft.elections.ui.common.LoadingMenu;
 import net.democracycraft.elections.util.sound.SoundHelper;
 import net.democracycraft.elections.util.sound.SoundSpec;
@@ -21,7 +21,6 @@ import org.bukkit.inventory.ItemStack;
 import org.bukkit.scheduler.BukkitRunnable;
 
 import java.io.Serializable;
-import java.time.Duration;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -106,7 +105,7 @@ public class BlockBallotMenu extends ChildMenuImp {
             dialogBuilder.addInput(DialogInput.bool(key, miniMessage("<gray>" + candidate.getName() + "</gray>")).initial(false).build());
         }
 
-        dialogBuilder.buttonWithPlayer(miniMessage(config.submitBtn, placeholders), null, Duration.ofMinutes(5), 1, (playerActor, response) -> {
+        dialogBuilder.buttonWithPlayer(miniMessage(config.submitBtn, placeholders), null, (playerActor, response) -> {
             List<Integer> picks = new ArrayList<>();
             for (Map.Entry<String, Integer> entry : keyToId.entrySet()) {
                 Boolean selected = response.getBoolean(entry.getKey());

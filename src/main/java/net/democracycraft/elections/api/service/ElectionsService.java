@@ -80,7 +80,11 @@ public interface ElectionsService {
     /** Records an EXPORTED status change in the election status log. */
     CompletableFuture<Boolean> markExportedAsync(int electionId, String actor);
 
+
+
+
     // --- Internal synchronous convenience wrappers (do not run on main thread unless noted) ---
+
     /** Snapshot-only: safe on main thread. */
     default Optional<Election> getElection(int id) { return getElectionSnapshot(id); }
     /** Snapshot-only: safe on main thread. */
@@ -90,6 +94,7 @@ public interface ElectionsService {
     default Election createElection(String title, VotingSystem system, int minimumVotes, RequirementsDto requirements, String actor) {
         return createElectionAsync(title, system, minimumVotes, requirements, actor).join();
     }
+
     default boolean deleteElection(int id, String actor) { return deleteElectionAsync(id, actor).join(); }
     default boolean setTitle(int electionId, String title, String actor) { return setTitleAsync(electionId, title, actor).join(); }
     default boolean setSystem(int electionId, VotingSystem system, String actor) { return setSystemAsync(electionId, system, actor).join(); }

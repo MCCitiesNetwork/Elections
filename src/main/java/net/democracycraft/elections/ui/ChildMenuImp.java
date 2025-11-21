@@ -2,11 +2,11 @@ package net.democracycraft.elections.ui;
 
 import net.democracycraft.elections.api.ui.ChildMenu;
 import net.democracycraft.elections.api.ui.ParentMenu;
-import net.democracycraft.elections.ui.dialog.AutoDialog;
+import net.democracycraft.elections.api.ui.AutoDialog;
 import org.bukkit.entity.Player;
 
 public class ChildMenuImp extends MenuImp implements ChildMenu {
-    private final ParentMenu parentMenu;
+    protected final ParentMenu parentMenu;
 
     /**
      *

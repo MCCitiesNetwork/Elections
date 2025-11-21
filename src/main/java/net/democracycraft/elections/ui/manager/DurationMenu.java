@@ -10,13 +10,12 @@ import net.democracycraft.elections.api.service.ElectionsService;
 import net.democracycraft.elections.data.TimeDto;
 import net.democracycraft.elections.ui.ChildMenuImp;
 import net.democracycraft.elections.api.ui.ParentMenu;
-import net.democracycraft.elections.ui.dialog.AutoDialog;
+import net.democracycraft.elections.api.ui.AutoDialog;
 import net.democracycraft.elections.ui.common.LoadingMenu;
 import org.bukkit.entity.Player;
 import org.bukkit.scheduler.BukkitRunnable;
 
 import java.io.Serializable;
-import java.time.Duration;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -99,7 +98,7 @@ public class DurationMenu extends ChildMenuImp {
         dialogBuilder.addInput(DialogInput.numberRange(Keys.HOURS.name(), miniMessage(config.hoursLabel, placeholders), config.hoursMin, config.hoursMax).step(config.hoursStep).initial((float) initialHours).build());
         dialogBuilder.addInput(DialogInput.numberRange(Keys.MINUTES.name(), miniMessage(config.minutesLabel, placeholders), config.minutesMin, config.minutesMax).step(config.minutesStep).initial((float) initialMinutes).build());
 
-        dialogBuilder.buttonWithPlayer(miniMessage(config.saveBtn, placeholders), null, Duration.ofMinutes(5), 1, (playerActor, response) -> {
+        dialogBuilder.buttonWithPlayer(miniMessage(config.saveBtn, placeholders), null, (playerActor, response) -> {
             Float daysVal = response.getFloat(Keys.DAYS.name());
             Float hoursVal = response.getFloat(Keys.HOURS.name());
             Float minutesVal = response.getFloat(Keys.MINUTES.name());

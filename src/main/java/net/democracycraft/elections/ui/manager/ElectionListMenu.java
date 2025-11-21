@@ -8,7 +8,7 @@ import net.democracycraft.elections.api.service.ElectionsService;
 import net.democracycraft.elections.ui.ParentMenuImp;
 import net.democracycraft.elections.ui.list.ElectionListItemMenu;
 import net.democracycraft.elections.ui.manager.create.ElectionCreateWizard;
-import net.democracycraft.elections.ui.dialog.AutoDialog;
+import net.democracycraft.elections.api.ui.AutoDialog;
 import net.kyori.adventure.text.Component;
 import org.bukkit.entity.Player;
 
@@ -110,7 +110,7 @@ public class ElectionListMenu extends ParentMenuImp {
             searchDlg.title(miniMessage(config.searchDialogTitle, null));
             var input = io.papermc.paper.registry.data.dialog.input.DialogInput.text("Q", miniMessage(config.searchQueryLabel, null)).labelVisible(true).build();
             searchDlg.addInput(input);
-            searchDlg.buttonWithPlayer(miniMessage(config.searchApplyBtn, null), null, java.time.Duration.ofMinutes(3), 1, (p, response) -> {
+            searchDlg.buttonWithPlayer(miniMessage(config.searchApplyBtn, null), null, (p, response) -> {
                 String q = response.getText("Q");
                 new ElectionListMenu(p, electionsService, 0, q).open();
             });

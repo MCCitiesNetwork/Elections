@@ -7,7 +7,7 @@ import net.democracycraft.elections.Elections;
 import net.democracycraft.elections.api.ui.ParentMenu;
 import net.democracycraft.elections.ui.ChildMenuImp;
 import net.democracycraft.elections.ui.manager.ElectionManagerMenu;
-import net.democracycraft.elections.ui.dialog.AutoDialog;
+import net.democracycraft.elections.api.ui.AutoDialog;
 import net.democracycraft.elections.ui.common.LoadingMenu;
 import net.kyori.adventure.text.Component;
 import org.bukkit.entity.Player;
@@ -73,8 +73,8 @@ public class ElectionCreateConfirmMenu extends ChildMenuImp {
                     "%days%", String.valueOf(days), "%hours%", String.valueOf(hours), "%minutes%", String.valueOf(minutes)));
         }
 
-        String permsCount = String.valueOf(draft.requirements.getPermissions().size());
-        String minutesRequired = String.valueOf(draft.requirements.getMinActivePlaytimeMinutes());
+        String permsCount = String.valueOf(draft.requirements.permissions().size());
+        String minutesRequired = String.valueOf(draft.requirements.minActivePlaytimeMinutes());
         String requirementsSummary = applyPlaceholders(config.requirementsFormat, Map.of("%perms_count%", permsCount, "%minutes%", minutesRequired));
 
         dialogBuilder.addBody(DialogBody.plainMessage(Component.newline()

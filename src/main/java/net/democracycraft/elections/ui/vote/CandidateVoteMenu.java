@@ -11,7 +11,7 @@ import net.democracycraft.elections.api.ui.ParentMenu;
 import net.democracycraft.elections.data.VotingSystem;
 import net.democracycraft.elections.ui.ChildMenuImp;
 import net.democracycraft.elections.util.HeadUtil;
-import net.democracycraft.elections.ui.dialog.AutoDialog;
+import net.democracycraft.elections.api.ui.AutoDialog;
 import net.democracycraft.elections.util.sound.SoundHelper;
 import net.democracycraft.elections.util.sound.SoundSpec;
 import org.bukkit.entity.Player;

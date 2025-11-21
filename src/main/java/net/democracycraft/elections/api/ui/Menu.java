@@ -1,13 +1,13 @@
 package net.democracycraft.elections.api.ui;
 
 import io.papermc.paper.dialog.Dialog;
-import net.democracycraft.elections.ui.dialog.AutoDialog;
 import org.bukkit.entity.Player;
 import org.jetbrains.annotations.Nullable;
 
 public interface Menu {
 
     String getId();
+
     @Nullable
     Dialog getDialog();
 

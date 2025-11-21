@@ -7,7 +7,7 @@ import net.democracycraft.elections.Elections;
 import net.democracycraft.elections.api.service.ElectionsService;
 import net.democracycraft.elections.ui.ChildMenuImp;
 import net.democracycraft.elections.api.ui.ParentMenu;
-import net.democracycraft.elections.ui.dialog.AutoDialog;
+import net.democracycraft.elections.api.ui.AutoDialog;
 import net.democracycraft.elections.util.listener.DynamicListener;
 import net.democracycraft.elections.ui.common.LoadingMenu;
 import org.bukkit.Location;

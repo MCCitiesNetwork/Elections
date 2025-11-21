@@ -59,9 +59,9 @@ public class SqlElectionsService implements ElectionsService {
     private static Long tsToEpoch(TimeStampDto ts) {
         if (ts == null) return null;
         Calendar c = Calendar.getInstance(TimeZone.getTimeZone("UTC"));
-        c.set(Calendar.YEAR, ts.date().getYear());
-        c.set(Calendar.MONTH, ts.date().getMonth()-1);
-        c.set(Calendar.DAY_OF_MONTH, ts.date().getDay());
+        c.set(Calendar.YEAR, ts.date().year());
+        c.set(Calendar.MONTH, ts.date().month()-1);
+        c.set(Calendar.DAY_OF_MONTH, ts.date().day());
         c.set(Calendar.HOUR_OF_DAY, ts.time().hour());
         c.set(Calendar.MINUTE, ts.time().minute());
         c.set(Calendar.SECOND, ts.time().second());
@@ -73,7 +73,7 @@ public class SqlElectionsService implements ElectionsService {
         if (ts == null) return null;
         DateDto d = ts.date();
         TimeDto t = ts.time();
-        return String.format(Locale.ROOT, "%04d-%02d-%02d %02d:%02d:%02dZ", d.getYear(), d.getMonth(), d.getDay(), t.hour(), t.minute(), t.second());
+        return String.format(Locale.ROOT, "%04d-%02d-%02d %02d:%02d:%02dZ", d.year(), d.month(), d.day(), t.hour(), t.minute(), t.second());
     }
 
     private static TimeDto normalize(TimeDto t) {
@@ -327,20 +327,20 @@ public class SqlElectionsService implements ElectionsService {
         // upsert main row
         ElectionRequirementsEntity req = new ElectionRequirementsEntity();
         req.electionId = electionId;
-        req.minActivePlaytimeMinutes = (requirements == null) ? null : requirements.getMinActivePlaytimeMinutes();
+        req.minActivePlaytimeMinutes = (requirements == null) ? null : requirements.minActivePlaytimeMinutes();
         schema.electionRequirements().insertOrUpdateSync(req);
         // replace permissions
         Map<String, Object> where = new HashMap<>();
         where.put("electionId", electionId);
         schema.requirementPermissions().deleteWhereSync(where);
-        if (requirements != null && requirements.getPermissions() != null) {
-            for (String p : requirements.getPermissions()) {
+        if (requirements != null && requirements.permissions() != null) {
+            for (String p : requirements.permissions()) {
                 ElectionRequirementPermissionEntity rp = new ElectionRequirementPermissionEntity();
                 rp.electionId = electionId; rp.permission = p;
                 schema.requirementPermissions().insertNonPkSync(rp);
             }
         }
-        logChange(electionId, StateChangeType.REQUIREMENTS_CHANGED, actor, "perms=" + (requirements==null?0:requirements.getPermissions().size()) + ",minutes=" + (requirements==null?0:requirements.getMinActivePlaytimeMinutes()));
+        logChange(electionId, StateChangeType.REQUIREMENTS_CHANGED, actor, "perms=" + (requirements==null?0:requirements.permissions().size()) + ",minutes=" + (requirements==null?0:requirements.minActivePlaytimeMinutes()));
         refreshElection(electionId);
         return true;
     }

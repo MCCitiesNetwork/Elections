@@ -9,7 +9,7 @@ import net.democracycraft.elections.api.service.ElectionsService;
 import net.democracycraft.elections.api.ui.ParentMenu;
 import net.democracycraft.elections.data.BallotMode;
 import net.democracycraft.elections.ui.ChildMenuImp;
-import net.democracycraft.elections.ui.dialog.AutoDialog;
+import net.democracycraft.elections.api.ui.AutoDialog;
 import net.kyori.adventure.text.Component;
 import org.bukkit.entity.Player;
 import org.bukkit.scheduler.BukkitRunnable;

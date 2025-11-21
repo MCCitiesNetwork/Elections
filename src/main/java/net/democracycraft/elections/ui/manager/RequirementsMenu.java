@@ -10,7 +10,7 @@ import net.democracycraft.elections.api.service.ElectionsService;
 import net.democracycraft.elections.data.RequirementsDto;
 import net.democracycraft.elections.ui.ChildMenuImp;
 import net.democracycraft.elections.api.ui.ParentMenu;
-import net.democracycraft.elections.ui.dialog.AutoDialog;
+import net.democracycraft.elections.api.ui.AutoDialog;
 import net.democracycraft.elections.util.permissions.PermissionScanner;
 import net.democracycraft.elections.util.permissions.PermissionNodesStore;
 import net.democracycraft.elections.util.permissions.data.PermissionNodesDto;
@@ -19,7 +19,6 @@ import org.bukkit.entity.Player;
 import org.bukkit.scheduler.BukkitRunnable;
 
 import java.io.Serializable;
-import java.time.Duration;
 import java.util.*;
 import net.democracycraft.elections.ui.common.LoadingMenu;
 
@@ -70,8 +69,8 @@ public class RequirementsMenu extends ChildMenuImp {
 
     private Dialog build() {
         Election election = electionsService.getElection(electionId).orElse(null);
-        long currentMinutes = election == null || election.getRequirements() == null ? 0L : election.getRequirements().getMinActivePlaytimeMinutes();
-        List<String> currentPerms = election == null || election.getRequirements() == null ? List.of() : election.getRequirements().getPermissions();
+        long currentMinutes = election == null || election.getRequirements() == null ? 0L : election.getRequirements().minActivePlaytimeMinutes();
+        List<String> currentPerms = election == null || election.getRequirements() == null ? List.of() : election.getRequirements().permissions();
 
         var menuYml = getOrCreateMenuYml(Config.class, getMenuConfigFileName(), new Config().yamlHeader);
         Config config = menuYml.loadOrCreate(Config::new);
@@ -100,7 +99,7 @@ public class RequirementsMenu extends ChildMenuImp {
         dialogBuilder.addInput(DialogInput.numberRange(Keys.PLAYTIME.name(), miniMessage(config.playtimeLabel, placeholders), config.playtimeMin, config.playtimeMax).step(config.playtimeStep).initial((float) currentMinutes).build());
         dialogBuilder.addInput(DialogInput.text(Keys.PLAYTIME_TEXT.name(), miniMessage(config.fineAdjustLabel, placeholders)).labelVisible(true).build());
 
-        dialogBuilder.buttonWithPlayer(miniMessage(config.saveBtn, placeholders), null, Duration.ofMinutes(5), 1, (playerActor, response) -> {
+        dialogBuilder.buttonWithPlayer(miniMessage(config.saveBtn, placeholders), null, (playerActor, response) -> {
             List<String> newPerms = new ArrayList<>();
             for (Permission permission : permissionsByName.values()) {
                 String key = permKey(permission.getName());

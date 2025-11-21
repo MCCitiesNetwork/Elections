@@ -11,7 +11,7 @@ import net.democracycraft.elections.api.service.ElectionsService;
 import net.democracycraft.elections.api.ui.ParentMenu;
 import net.democracycraft.elections.ui.ChildMenuImp;
 import net.democracycraft.elections.util.HeadUtil;
-import net.democracycraft.elections.ui.dialog.AutoDialog;
+import net.democracycraft.elections.api.ui.AutoDialog;
 import net.democracycraft.elections.ui.common.LoadingMenu;
 import net.democracycraft.elections.util.sound.SoundHelper;
 import net.democracycraft.elections.util.sound.SoundSpec;
@@ -20,7 +20,6 @@ import org.bukkit.entity.Player;
 import org.bukkit.scheduler.BukkitRunnable;
 
 import java.io.Serializable;
-import java.time.Duration;
 import java.util.*;
 
 /**
@@ -113,7 +112,7 @@ public class PreferentialBallotMenu extends ChildMenuImp {
             dialogBuilder.addInput(DialogInput.text(rankKey, miniMessage(applyPlaceholders(config.rankForFormat, Map.of("%max%", String.valueOf(maxRank), "%candidate_name%", candidate.getName())), null)).labelVisible(true).build());
         }
 
-        dialogBuilder.buttonWithPlayer(miniMessage(config.submitBtn), null, Duration.ofMinutes(5), 1, (playerActor, response) -> {
+        dialogBuilder.buttonWithPlayer(miniMessage(config.submitBtn), null, (playerActor, response) -> {
             List<Map.Entry<Integer, Integer>> selections = new ArrayList<>();
             Set<Integer> seenRanks = new HashSet<>();
             for (Map.Entry<String, Integer> entry : selectKeyToId.entrySet()) {
