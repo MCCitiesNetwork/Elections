@@ -19,7 +19,7 @@ import java.util.Map;
  * Child dialog to view an election summary and open its manager.
  * All texts are configurable via data/menus/ElectionListItemMenu.yml with placeholders.
  */
-public class ElectionListItemMenu extends ChildMenuImp {
+public class ElectionPreviewMenu extends ChildMenuImp {
 
     private final ElectionsService electionsService;
     private final int electionId;
@@ -30,7 +30,7 @@ public class ElectionListItemMenu extends ChildMenuImp {
      * @param electionsService elections service
      * @param electionId election identifier
      */
-    public ElectionListItemMenu(Player player, ParentMenu parent, ElectionsService electionsService, int electionId) {
+    public ElectionPreviewMenu(Player player, ParentMenu parent, ElectionsService electionsService, int electionId) {
         super(player, parent, "election_list_item_" + electionId);
         this.electionsService = electionsService;
         this.electionId = electionId;
@@ -96,7 +96,11 @@ public class ElectionListItemMenu extends ChildMenuImp {
         ));
 
         dialogBuilder.button(miniMessage(config.openManagerBtn, placeholders), context -> new ElectionManagerMenu(context.player(), electionsService, electionId).open());
-        dialogBuilder.button(miniMessage(config.backBtn, placeholders), context -> context.player().closeInventory());
+        Dialog parentDialog = parentMenu.getDialog();
+        if (parentDialog != null) {
+            dialogBuilder.button(miniMessage(config.backBtn, placeholders), context -> context.player().showDialog(parentDialog));
+        }
+
         return dialogBuilder.build();
     }
 }

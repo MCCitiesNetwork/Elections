@@ -6,7 +6,7 @@ import io.papermc.paper.registry.data.dialog.body.DialogBody;
 import net.democracycraft.elections.api.model.Election;
 import net.democracycraft.elections.api.service.ElectionsService;
 import net.democracycraft.elections.ui.ParentMenuImp;
-import net.democracycraft.elections.ui.list.ElectionListItemMenu;
+import net.democracycraft.elections.ui.list.ElectionPreviewMenu;
 import net.democracycraft.elections.ui.manager.create.ElectionCreateWizard;
 import net.democracycraft.elections.api.ui.AutoDialog;
 import net.kyori.adventure.text.Component;
@@ -97,7 +97,7 @@ public class ElectionListMenu extends ParentMenuImp {
                 );
                 Component label = miniMessage(config.rowFormat, placeholders);
                 int selectedElectionId = election.getId();
-                dialogBuilder.button(label, context -> new ElectionListItemMenu(context.player(), this, electionsService, selectedElectionId).open());
+                dialogBuilder.button(label, context -> new ElectionPreviewMenu(context.player(), this, electionsService, selectedElectionId).open());
             }
             // Prev/Next controls
             if (page > 0) dialogBuilder.button(miniMessage(config.prevBtn, null), c -> new ElectionListMenu(c.player(), electionsService, page - 1, query).open());

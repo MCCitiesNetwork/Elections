@@ -68,9 +68,9 @@ public class PermissionScanner {
 
         // Normalize nodes: lowercase, trim, strip trailing '.'
         Set<String> nodes = new LinkedHashSet<>();
-        for (String n : dto.nodes()) {
-            if (n == null) continue;
-            String s = n.trim().toLowerCase(Locale.ROOT);
+        for (String node : dto.nodes()) {
+            if (node == null) continue;
+            String s = node.trim().toLowerCase(Locale.ROOT);
             if (s.endsWith(".")) s = s.substring(0, s.length() - 1);
             if (!s.isEmpty()) nodes.add(s);
         }
@@ -78,10 +78,13 @@ public class PermissionScanner {
 
         for (Permission perm : Bukkit.getServer().getPluginManager().getPermissions()) {
             String name = perm.getName();
-            if (name == null || name.isEmpty()) continue;
+            if (name.isEmpty()) continue;
             String ln = name.toLowerCase(Locale.ROOT);
             for (String node : nodes) {
-                if (ln.equals(node) || ln.startsWith(node + ".")) {
+                // Match when the permission equals the node, starts with node.,
+                // or contains the node as a full dot-separated segment sequence anywhere.
+                // Examples matched: "node", "node.sub", "prefix.node", "prefix.node.suffix"
+                if (ln.equals(node) || ln.startsWith(node + ".") || ln.endsWith("." + node) || ln.contains("." + node + ".")) {
                     result.add(perm);
                     break;
                 }
