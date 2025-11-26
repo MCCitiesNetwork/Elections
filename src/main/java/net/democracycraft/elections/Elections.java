@@ -5,11 +5,12 @@ import net.democracycraft.elections.command.ElectionsCommand;
 import net.democracycraft.elections.database.DatabaseSchema;
 import net.democracycraft.elections.database.MySQLManager;
 import net.democracycraft.elections.service.SqlElectionsService;
+import net.democracycraft.elections.util.export.github.GitHubGistClient;
 import net.democracycraft.elections.util.listener.PollInteractListener;
 import net.democracycraft.elections.util.listener.PlayerJoinHeadCacheListener;
-import net.democracycraft.elections.util.export.PasteGGClient;
-import net.democracycraft.elections.util.export.PasteStorage;
 import net.democracycraft.elections.util.permissions.PermissionNodesStore;
+import net.democracycraft.elections.util.config.DataFolder;
+import net.democracycraft.elections.util.yml.AutoYML;
 import org.bukkit.command.PluginCommand;
 import org.bukkit.event.Listener;
 import org.bukkit.plugin.ServicePriority;
@@ -35,7 +36,6 @@ public class Elections extends JavaPlugin {
     private DatabaseSchema schema;
     private BukkitTask autoCloseTask;
     private BukkitTask deletedPurgeTask;
-    private PasteStorage pasteStorage;
     private LocalExportedElectionQueue localQueue;
 
     @Override
@@ -71,8 +71,6 @@ public class Elections extends JavaPlugin {
         // Register service for third-party plugins via Bukkit ServicesManager
         getServer().getServicesManager().register(ElectionsService.class, this.electionsService, this, ServicePriority.Highest);
 
-        // Paste storage client (remote storage)
-        this.pasteStorage = new PasteGGClient();
         // Local queue for exports
         this.localQueue = new LocalExportedElectionQueue(this);
 
@@ -96,6 +94,9 @@ public class Elections extends JavaPlugin {
 
         registerListener(new PollInteractListener(electionsService));
         registerListener(new PlayerJoinHeadCacheListener(electionsService));
+
+
+        GitHubGistClient.loadConfig();
     }
 
     private void registerListener(Listener listener){
@@ -159,11 +160,6 @@ public class Elections extends JavaPlugin {
      * @return the database schema and AutoTable registry.
      */
     public DatabaseSchema getSchema() { return schema; }
-
-    /**
-     * @return the paste storage client (remote storage).
-     */
-    public PasteStorage getPasteStorage() { return pasteStorage; }
 
     /**
      * @return local export queue singleton.
