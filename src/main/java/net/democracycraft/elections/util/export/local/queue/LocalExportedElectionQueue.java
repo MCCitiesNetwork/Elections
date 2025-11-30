@@ -5,7 +5,7 @@ import net.democracycraft.elections.api.model.Election;
 import net.democracycraft.elections.api.service.ElectionsService;
 import net.democracycraft.elections.data.StateChangeType;
 import net.democracycraft.elections.util.config.DataFolder;
-import net.democracycraft.elections.util.export.PasteStorage;
+import net.democracycraft.elections.api.service.GitHubGistService;
 import org.bukkit.scheduler.BukkitRunnable;
 
 import java.io.File;
@@ -28,7 +28,7 @@ import java.util.regex.Pattern;
  *
  * Directories:
  * - exports/queue: pending files (election-<id>-<epoch>.json)
- * - exports/sent: archived after successful publish (includes remote id)
+ * - exports/sent: archived after successful publish
  * - exports/failed: files that could not be processed (moved here)
  */
 public class LocalExportedElectionQueue {
@@ -84,11 +84,11 @@ public class LocalExportedElectionQueue {
     }
 
     /**
-     * Processes all files in the queue, publishing them one by one.
+     * Processes all files in the queue, publishing them one by one using the provided GitHubGistService.
      * Checks beforehand whether the election was already exported; if so, the file is removed.
      * Returns a report with totals.
      */
-    public CompletableFuture<Report> processAll(PasteStorage storage, ElectionsService service, String actor) {
+    public CompletableFuture<Report> processAll(GitHubGistService gistService, ElectionsService service, String actor) {
         CompletableFuture<Report> cf = new CompletableFuture<>();
         new BukkitRunnable() {
             @Override public void run() {
@@ -97,7 +97,7 @@ public class LocalExportedElectionQueue {
                 AtomicInteger skipped = new AtomicInteger();
                 AtomicInteger failed = new AtomicInteger();
 
-                processNext(0, files, storage, service, actor, uploaded, skipped, failed, () -> {
+                processNext(0, files, gistService, service, actor, uploaded, skipped, failed, () -> {
                     Report r = new Report(files.size(), uploaded.get(), skipped.get(), failed.get());
                     new BukkitRunnable() { @Override public void run() { cf.complete(r); } }.runTask(plugin);
                 });
@@ -106,7 +106,7 @@ public class LocalExportedElectionQueue {
         return cf;
     }
 
-    private void processNext(int i, List<File> files, PasteStorage storage, ElectionsService service, String actor,
+    private void processNext(int i, List<File> files, GitHubGistService gistService, ElectionsService service, String actor,
                               AtomicInteger uploaded, AtomicInteger skipped, AtomicInteger failed, Runnable done) {
         if (i >= files.size()) { done.run(); return; }
         File f = files.get(i);
@@ -115,7 +115,7 @@ public class LocalExportedElectionQueue {
             // invalid filename: move to failed
             moveTo(f, new File(failedDir, f.getName()));
             failed.incrementAndGet();
-            processNext(i+1, files, storage, service, actor, uploaded, skipped, failed, done);
+            processNext(i+1, files, gistService, service, actor, uploaded, skipped, failed, done);
             return;
         }
         try {
@@ -125,7 +125,7 @@ public class LocalExportedElectionQueue {
                 if (err != null || opt.isEmpty()) {
                     // DB error or election not found: keep in queue and count as failure
                     failed.incrementAndGet();
-                    processNext(i+1, files, storage, service, actor, uploaded, skipped, failed, done);
+                    processNext(i+1, files, gistService, service, actor, uploaded, skipped, failed, done);
                     return;
                 }
                 Election e = opt.get();
@@ -134,31 +134,33 @@ public class LocalExportedElectionQueue {
                     // already exported: remove from queue
                     safeDelete(f);
                     skipped.incrementAndGet();
-                    processNext(i+1, files, storage, service, actor, uploaded, skipped, failed, done);
+                    processNext(i+1, files, gistService, service, actor, uploaded, skipped, failed, done);
                     return;
                 }
-                // publish
-                storage.putAsync(content).thenAccept(pasteId -> {
+                // publish to GitHub Gist
+                String gistFileName = "election-" + electionId + ".json";
+                gistService.publish(gistFileName, content).whenComplete((url, ex) -> {
+                    if (ex != null) {
+                        plugin.getLogger().warning("Queue publish failed for electionId=" + electionId + ": " + ex.getMessage());
+                        // keep in queue and count as failure
+                        failed.incrementAndGet();
+                        processNext(i+1, files, gistService, service, actor, uploaded, skipped, failed, done);
+                        return;
+                    }
+                    // mark exported and archive locally
                     service.markExportedAsync(electionId, actor);
-                    // archive
                     String stamp = DateTimeFormatter.ISO_INSTANT.format(Instant.now());
                     String safeStamp = stamp.replace(':', '-');
-                    File dest = new File(sentDir, f.getName().replace(".json", "-" + pasteId + "-" + safeStamp + ".json"));
+                    File dest = new File(sentDir, f.getName().replace(".json", "-" + safeStamp + ".json"));
                     moveTo(f, dest);
                     uploaded.incrementAndGet();
-                    processNext(i+1, files, storage, service, actor, uploaded, skipped, failed, done);
-                }).exceptionally(ex -> {
-                    plugin.getLogger().warning("Queue publish failed for electionId=" + electionId + ": " + ex.getMessage());
-                    // keep in queue and count as failure
-                    failed.incrementAndGet();
-                    processNext(i+1, files, storage, service, actor, uploaded, skipped, failed, done);
-                    return null;
+                    processNext(i+1, files, gistService, service, actor, uploaded, skipped, failed, done);
                 });
             });
         } catch (IOException io) {
             moveTo(f, new File(failedDir, f.getName()));
             failed.incrementAndGet();
-            processNext(i+1, files, storage, service, actor, uploaded, skipped, failed, done);
+            processNext(i+1, files, gistService, service, actor, uploaded, skipped, failed, done);
         }
     }
 

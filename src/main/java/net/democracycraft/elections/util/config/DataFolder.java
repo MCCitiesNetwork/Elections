@@ -3,7 +3,9 @@ package net.democracycraft.elections.util.config;
 public enum DataFolder {
     PERMISSIONS("permissions"),
     MENUS("menus"),
-    EXPORTS("exports");
+    EXPORTS("exports"),
+    GITHUB("github"),
+    EXPORT_MESSAGES("export-messages");
 
 
     private final String path;

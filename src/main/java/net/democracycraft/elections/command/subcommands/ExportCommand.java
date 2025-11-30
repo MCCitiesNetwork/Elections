@@ -1,472 +1,845 @@
 package net.democracycraft.elections.command.subcommands;
 
 import com.google.gson.Gson;
+import com.google.gson.GsonBuilder;
+import net.democracycraft.elections.Elections;
 import net.democracycraft.elections.api.model.Candidate;
 import net.democracycraft.elections.api.model.Election;
-import net.democracycraft.elections.api.model.Vote;
 import net.democracycraft.elections.api.model.Voter;
 import net.democracycraft.elections.api.service.ElectionsService;
+import net.democracycraft.elections.api.service.GitHubGistService;
 import net.democracycraft.elections.command.framework.CommandContext;
 import net.democracycraft.elections.command.framework.Subcommand;
-import net.democracycraft.elections.data.*;
 import net.democracycraft.elections.util.config.DataFolder;
-import net.democracycraft.elections.util.export.PasteStorage;
+import net.democracycraft.elections.util.export.ElectionMarkdownFormatter;
+import net.democracycraft.elections.util.export.ExportMessagesConfig;
+import net.democracycraft.elections.util.export.github.GitHubGistClient;
 import net.democracycraft.elections.util.export.local.queue.LocalExportedElectionQueue;
+import net.democracycraft.elections.util.text.MiniMessageUtil;
+import net.democracycraft.elections.util.yml.AutoYML;
+import net.kyori.adventure.text.Component;
 import org.bukkit.Bukkit;
 
 import java.io.File;
 import java.io.FileOutputStream;
+import java.io.IOException;
 import java.nio.charset.StandardCharsets;
-import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
+import static net.democracycraft.elections.command.subcommands.ExportCommand.Mode.BOTH;
+import static net.democracycraft.elections.command.subcommands.ExportCommand.Mode.LOCAL;
+
 /**
  * Export-related operations grouped under a single subcommand.
  *
- * Supported usages:
- * - export <id>                          -> publish remotely (user-safe)
- * - export local <id>                    -> save locally to the queue
- * - export both <id>                     -> publish remotely and also save locally
- * - export admin <id>                    -> like export <id> but with voter names
- * - export admin local <id>              -> local-only with voter names
- * - export admin both <id>               -> remote + local with voter names
- * - export delete <id> confirm           -> delete a remote publication (managers)
- * - export dispatch                      -> process the entire local queue (managers)
- * - export ballots <local|online> <id>   -> export only ballots (anonymous), JSON array-of-arrays (candidate NAMES)
- * - export ballots admin <local|online> <id> -> export only ballots as JSON with voter names
+ * <p>Supported usages:
+ * <ul>
+ *     <li>export &lt;id&gt;                          - publish remotely (user-safe)</li>
+ *     <li>export local &lt;id&gt;                    - save locally to the queue</li>
+ *     <li>export both &lt;id&gt;                     - publish remotely and also save locally</li>
+ *     <li>export admin &lt;id&gt;                    - like export &lt;id&gt; but with voter names</li>
+ *     <li>export admin local &lt;id&gt;              - local-only with voter names</li>
+ *     <li>export admin both &lt;id&gt;               - remote + local with voter names</li>
+ *     <li>export delete &lt;id&gt; [confirm]         - delete a remote publication (currently not supported)</li>
+ *     <li>export dispatch                       - process the entire local queue (managers)</li>
+ *     <li>export ballots &lt;local|online&gt; &lt;id&gt;   - export only ballots (anonymous), JSON array-of-arrays (candidate names)</li>
+ *     <li>export ballots admin &lt;local|online&gt; &lt;id&gt; - export only ballots as JSON with voter names</li>
+ * </ul>
+ * </p>
  */
 public class ExportCommand implements Subcommand {
 
-    private enum Mode { REMOTE, LOCAL, BOTH }
+    /** Export destination mode. */
+    enum Mode { REMOTE, LOCAL, BOTH }
 
     @Override
-    public List<String> names() { return List.of("export"); }
+    public List<String> names() {
+        return List.of("export");
+    }
 
     @Override
-    public String permission() { return "elections.export"; }
+    public String permission() {
+        return "elections.export";
+    }
 
     @Override
-    public String usage() { return "export <id> | export local <id> | export both <id> | export admin [local|both] <id> | export delete <id> [confirm] | export dispatch | export ballots <local|online> <id> | export ballots admin <local|online> <id>"; }
+    public String usage() {
+        return "export <id> | export local <id> | export both <id> | export admin [local|both] <id> | export delete <id> [confirm] | export dispatch | export ballots <local|online> <id> | export ballots admin <local|online> <id>";
+    }
 
     @Override
-    public void execute(CommandContext ctx) {
-        if (ctx.args().length < 1) { ctx.usage(usage()); return; }
-        String a0 = ctx.args()[0].toLowerCase(java.util.Locale.ROOT);
-        switch (a0) {
-            case "admin" -> executeAdminExport(ctx);
-            case "delete" -> executeDelete(ctx);
-            case "dispatch" -> executeDispatch(ctx);
-            case "local" -> executeUserExport(ctx, Mode.LOCAL);
-            case "both" -> executeUserExport(ctx, Mode.BOTH);
-            case "ballots" -> executeBallotsRouter(ctx);
-            default -> executeUserExport(ctx, Mode.REMOTE);
+    public void execute(CommandContext context) {
+        if (context.args().length < 1) {
+            context.usage(usage());
+            return;
+        }
+
+        // Reload export messages on each invocation so live edits to
+        // export-messages.yml are applied immediately.
+        AutoYML<ExportMessagesConfig> exportMessagesYml = AutoYML.create(
+                ExportMessagesConfig.class,
+                "export-messages",
+                DataFolder.EXPORT_MESSAGES,
+                ExportMessagesConfig.defaultHeader()
+        );
+        ExportMessagesConfig messages = exportMessagesYml.loadOrCreate(ExportMessagesConfig::new);
+
+        String sub = context.args()[0].toLowerCase(java.util.Locale.ROOT);
+        switch (sub) {
+            case "admin" -> executeAdminExport(context, messages);
+            case "delete" -> executeDelete(context, messages);
+            case "dispatch" -> executeDispatch(context, messages);
+            case "local" -> executeUserExport(context, Mode.LOCAL, messages);
+            case "both" -> executeUserExport(context, Mode.BOTH, messages);
+            case "ballots" -> executeBallotsRouter(context, messages);
+            default -> executeUserExport(context, Mode.REMOTE, messages);
         }
     }
 
-    private void executeUserExport(CommandContext ctx, Mode mode) {
-        int idx = (mode == Mode.REMOTE ? 0 : 1);
-        int id = ctx.requireInt(idx, "id");
-        ElectionsService electionsService = ctx.electionsService();
-        electionsService.getElectionAsync(id).whenComplete((opt, err) -> {
-            if (err != null) {
-                Bukkit.getScheduler().runTask(ctx.plugin(), () -> ctx.sender().sendMessage("Lookup failed: " + err.getMessage()));
+    // ---------------------------------------------------------------------
+    // Standard user export
+    // ---------------------------------------------------------------------
+
+    /**
+     * Execute a user-facing export of an election.
+     *
+     * @param context command context
+     * @param mode    export destination mode
+     */
+    private void executeUserExport(CommandContext context, Mode mode, ExportMessagesConfig messages) {
+        Elections plugin = context.plugin();
+
+        int idArgIndex = (mode == Mode.REMOTE ? 0 : 1);
+        int electionId = context.requireInt(idArgIndex, "id");
+
+        ElectionsService electionsService = context.electionsService();
+        electionsService.getElectionAsync(electionId).whenComplete((optionalElection, throwable) -> {
+            if (throwable != null) {
+                String raw = messages.errorLookupFailed.replace("%error%", safeError(throwable));
+                Component msg = MiniMessageUtil.parseOrPlain(raw);
+                Bukkit.getScheduler().runTask(plugin, () -> context.sender().sendMessage(msg));
                 return;
             }
-            if (opt.isEmpty()) {
-                Bukkit.getScheduler().runTask(ctx.plugin(), () -> ctx.sender().sendMessage("Election not found."));
+
+            if (optionalElection.isEmpty()) {
+                Component msg = MiniMessageUtil.parseOrPlain(messages.errorElectionNotFound);
+                Bukkit.getScheduler().runTask(plugin, () -> context.sender().sendMessage(msg));
                 return;
             }
-            Bukkit.getScheduler().runTaskAsynchronously(ctx.plugin(), () -> {
-                Election election = opt.get();
-                String json = election.toJson(false, id2 -> null);
-                LocalExportedElectionQueue queue = ctx.plugin().getLocalExportQueue();
-                PasteStorage storage = ctx.plugin().getPasteStorage();
+
+            Bukkit.getScheduler().runTaskAsynchronously(plugin, () -> {
+                Election election = optionalElection.get();
+                String json = election.toJson(false, id -> null);
+                String markdown = ElectionMarkdownFormatter.toMarkdown(
+                        election,
+                        null,
+                        false
+                );
+
+                LocalExportedElectionQueue queue = plugin.getLocalExportQueue();
+                GitHubGistService gistService = new GitHubGistClient();
 
                 switch (mode) {
-                    case LOCAL -> {
-                        queue.enqueue(election.getId(), json).thenAccept(f -> {
-                            ctx.sender().sendMessage("Saved to local queue: " + f.getName());
-                            ctx.plugin().getLogger().info("[ExportLocal] actor=" + ctx.sender().getName() + ", electionId=" + election.getId() + ", file=" + f.getName());
-                        }).exceptionally(ex -> {
-                            Bukkit.getScheduler().runTask(ctx.plugin(), () -> ctx.sender().sendMessage("Could not save locally: " + ex.getMessage()));
-                            return null;
-                        });
-                    }
-                    case BOTH -> {
-                        storage.putAsync(json).thenAccept(pasteId -> {
-                            String url = storage.viewUrl(pasteId);
-                            electionsService.markExportedAsync(election.getId(), ctx.sender().getName());
-                            ctx.sender().sendMessage("Published: " + url);
-                            ctx.plugin().getLogger().info("[ExportBoth] actor=" + ctx.sender().getName() + ", electionId=" + election.getId() + ", pasteId=" + pasteId);
-                            // also keep a local copy
-                            queue.enqueue(election.getId(), json);
-                        }).exceptionally(ex -> {
-                            // Fallback: save locally
-                            queue.enqueue(election.getId(), json).thenAccept(f -> {
-                                Bukkit.getScheduler().runTask(ctx.plugin(), () -> ctx.sender().sendMessage("Remote publish failed, saved to local queue: " + f.getName()));
-                                ctx.plugin().getLogger().warning("[ExportBoth->LocalFallback] actor=" + ctx.sender().getName() + ", electionId=" + election.getId() + ", error=" + ex.getMessage());
-                            });
-                            return null;
-                        });
-                    }
-                    case REMOTE -> {
-                        storage.putAsync(json).thenAccept(pasteId -> {
-                            String url = storage.viewUrl(pasteId);
-                            electionsService.markExportedAsync(election.getId(), ctx.sender().getName());
-                            ctx.sender().sendMessage("Published: " + url);
-                            ctx.plugin().getLogger().info("[Export] actor=" + ctx.sender().getName() + ", electionId=" + election.getId() + ", pasteId=" + pasteId);
-                        }).exceptionally(ex -> {
-                            // Fallback: save locally
-                            queue.enqueue(election.getId(), json).thenAccept(f -> {
-                                Bukkit.getScheduler().runTask(ctx.plugin(), () -> ctx.sender().sendMessage("Remote publish failed, saved to local queue: " + f.getName()));
-                                ctx.plugin().getLogger().warning("[Export->LocalFallback] actor=" + ctx.sender().getName() + ", electionId=" + election.getId() + ", error=" + ex.getMessage());
-                            });
-                            return null;
-                        });
-                    }
+                    case LOCAL -> handleUserLocalExport(context, messages, queue, election, json);
+                    case BOTH -> handleUserBothExport(context, messages, electionsService, queue, gistService, election, json, markdown);
+                    case REMOTE -> handleUserRemoteExport(context, messages, electionsService, queue, gistService, election, json, markdown);
                 }
             });
         });
     }
 
-    private void executeAdminExport(CommandContext ctx) {
-        if (!ctx.sender().hasPermission("elections.manager") && !ctx.sender().hasPermission("elections.admin")) {
-            ctx.sender().sendMessage("You don't have permission.");
+    private void handleUserLocalExport(CommandContext context,
+                                       ExportMessagesConfig messages,
+                                       LocalExportedElectionQueue queue,
+                                       Election election,
+                                       String json) {
+        queue.enqueue(election.getId(), json).thenAccept(file -> {
+            String raw = messages.userLocalSaved.replace("%file%", file.getName());
+            Component msg = MiniMessageUtil.parseOrPlain(raw);
+            context.sender().sendMessage(msg);
+            context.plugin().getLogger().info("[ExportLocal] actor=" + context.sender().getName() + ", electionId=" + election.getId() + ", file=" + file.getName());
+        }).exceptionally(ex -> {
+            String raw = messages.errorCouldNotSaveLocal.replace("%error%", safeError(ex));
+            Component msg = MiniMessageUtil.parseOrPlain(raw);
+            Bukkit.getScheduler().runTask(context.plugin(), () -> context.sender().sendMessage(msg));
+            return null;
+        });
+    }
+
+    private void handleUserBothExport(CommandContext context,
+                                      ExportMessagesConfig messages,
+                                      ElectionsService electionsService,
+                                      LocalExportedElectionQueue queue,
+                                      GitHubGistService gistService,
+                                      Election election,
+                                      String json,
+                                      String markdown) {
+        gistService.publish(
+                "election-" + election.getId() + ".json",
+                json,
+                "election-" + election.getId() + ".md",
+                markdown
+        ).thenAccept(url -> {
+            electionsService.markExportedAsync(election.getId(), context.sender().getName());
+            String raw = messages.userPublished.replace("%url%", url);
+            Component msg = MiniMessageUtil.parseOrPlain(raw);
+            context.sender().sendMessage(msg);
+            context.plugin().getLogger().info("[ExportBoth] actor=" + context.sender().getName() + ", electionId=" + election.getId() + ", url=" + url);
+            // also keep a local copy (fire-and-forget)
+            queue.enqueue(election.getId(), json);
+        }).exceptionally(ex -> {
+            // Fallback: save locally
+            queue.enqueue(election.getId(), json).thenAccept(file -> {
+                String raw = messages.errorRemoteFailedLocalSaved.replace("%file%", file.getName());
+                Component msg = MiniMessageUtil.parseOrPlain(raw);
+                Bukkit.getScheduler().runTask(context.plugin(), () -> context.sender().sendMessage(msg));
+                context.plugin().getLogger().warning("[ExportBoth->LocalFallback] actor=" + context.sender().getName() + ", electionId=" + election.getId() + ", error=" + safeError(ex));
+            });
+            return null;
+        });
+    }
+
+    private void handleUserRemoteExport(CommandContext context,
+                                        ExportMessagesConfig messages,
+                                        ElectionsService electionsService,
+                                        LocalExportedElectionQueue queue,
+                                        GitHubGistService gistService,
+                                        Election election,
+                                        String json,
+                                        String markdown) {
+        gistService.publish(
+                "election-" + election.getId() + ".json",
+                json,
+                "election-" + election.getId() + ".md",
+                markdown
+        ).thenAccept(url -> {
+            electionsService.markExportedAsync(election.getId(), context.sender().getName());
+            String raw = messages.userPublished.replace("%url%", url);
+            Component msg = MiniMessageUtil.parseOrPlain(raw);
+            context.sender().sendMessage(msg);
+            context.plugin().getLogger().info("[Export] actor=" + context.sender().getName() + ", electionId=" + election.getId() + ", url=" + url);
+        }).exceptionally(ex -> {
+            // Fallback: save locally
+            queue.enqueue(election.getId(), json).thenAccept(file -> {
+                String raw = messages.errorRemoteFailedLocalSaved.replace("%file%", file.getName());
+                Component msg = MiniMessageUtil.parseOrPlain(raw);
+                Bukkit.getScheduler().runTask(context.plugin(), () -> context.sender().sendMessage(msg));
+                context.plugin().getLogger().warning("[Export->LocalFallback] actor=" + context.sender().getName() + ", electionId=" + election.getId() + ", error=" + safeError(ex));
+            });
+            return null;
+        });
+    }
+
+    // ---------------------------------------------------------------------
+    // Admin export (with voter names)
+    // ---------------------------------------------------------------------
+
+    /**
+     * Execute an admin export, including voter names and detailed ballots.
+     *
+     * @param context command context
+     */
+    private void executeAdminExport(CommandContext context, ExportMessagesConfig messages) {
+        Elections plugin = context.plugin();
+
+        if (!context.sender().hasPermission("elections.manager") &&
+            !context.sender().hasPermission("elections.admin")) {
+            Component msg = MiniMessageUtil.parseOrPlain(messages.errorNoPermission);
+            context.sender().sendMessage(msg);
             return;
         }
+
         // Syntax: admin [local|both] <id>
-        String[] a = ctx.args();
+        String[] args = context.args();
         Mode mode;
-        int idIdx;
-        if (a.length >= 3 && ("local".equalsIgnoreCase(a[1]) || "both".equalsIgnoreCase(a[1]))) {
-            mode = "local".equalsIgnoreCase(a[1]) ? Mode.LOCAL : Mode.BOTH;
-            idIdx = 2;
+        int idIndex;
+        if (args.length >= 3 && ("local".equalsIgnoreCase(args[1]) || "both".equalsIgnoreCase(args[1]))) {
+            mode = "local".equalsIgnoreCase(args[1]) ? LOCAL : BOTH;
+            idIndex = 2;
         } else {
             mode = Mode.REMOTE;
-            idIdx = 1;
+            idIndex = 1;
         }
-        int id = ctx.requireInt(idIdx, "id");
-        ElectionsService svc = ctx.electionsService();
-        svc.getElectionAsync(id).whenComplete((opt, err) -> {
-            if (err != null) {
-                Bukkit.getScheduler().runTask(ctx.plugin(), () -> ctx.sender().sendMessage("Lookup failed: " + err.getMessage()));
+
+        int electionId = context.requireInt(idIndex, "id");
+        ElectionsService electionsService = context.electionsService();
+
+        electionsService.getElectionAsync(electionId).whenComplete((optionalElection, throwable) -> {
+            if (throwable != null) {
+                String raw = messages.errorLookupFailed.replace("%error%", safeError(throwable));
+                Component msg = MiniMessageUtil.parseOrPlain(raw);
+                Bukkit.getScheduler().runTask(plugin, () -> context.sender().sendMessage(msg));
                 return;
             }
-            if (opt.isEmpty()) {
-                Bukkit.getScheduler().runTask(ctx.plugin(), () -> ctx.sender().sendMessage("Election not found."));
+
+            if (optionalElection.isEmpty()) {
+                Component msg = MiniMessageUtil.parseOrPlain(messages.errorElectionNotFound);
+                Bukkit.getScheduler().runTask(plugin, () -> context.sender().sendMessage(msg));
                 return;
             }
-            svc.listVotersAsync(id).whenComplete((voters, vErr) -> {
-                if (vErr != null) {
-                    Bukkit.getScheduler().runTask(ctx.plugin(), () -> ctx.sender().sendMessage("Failed to fetch voters: " + vErr.getMessage()));
+
+            electionsService.listVotersAsync(electionId).whenComplete((voters, votersError) -> {
+                if (votersError != null) {
+                    String raw = messages.errorLookupFailed.replace("%error%", safeError(votersError));
+                    Component msg = MiniMessageUtil.parseOrPlain(raw);
+                    Bukkit.getScheduler().runTask(plugin, () -> context.sender().sendMessage(msg));
                     return;
                 }
-                Map<Integer, String> map = voters.stream().collect(Collectors.toMap(Voter::getId, Voter::getName, (a1,b) -> a1));
-                Function<Integer, String> provider = map::get;
-                Bukkit.getScheduler().runTaskAsynchronously(ctx.plugin(), () -> {
-                    Election election = opt.get();
-                    String json = election.toJson(true, provider);
-                    LocalExportedElectionQueue queue = ctx.plugin().getLocalExportQueue();
-                    PasteStorage ps = ctx.plugin().getPasteStorage();
+
+                Map<Integer, String> voterNameById = voters.stream()
+                        .collect(Collectors.toMap(
+                                Voter::getId,
+                                Voter::getName,
+                                (first, second) -> first
+                        ));
+                Function<Integer, String> voterNameProvider = voterNameById::get;
+
+                Bukkit.getScheduler().runTaskAsynchronously(plugin, () -> {
+                    Election election = optionalElection.get();
+                    String json = election.toJson(true, voterNameProvider);
+                    String markdown = ElectionMarkdownFormatter.toMarkdown(
+                            election,
+                            voterNameProvider,
+                            true
+                    );
+
+                    LocalExportedElectionQueue queue = plugin.getLocalExportQueue();
+                    GitHubGistService gistService = new GitHubGistClient();
 
                     switch (mode) {
-                        case LOCAL -> {
-                            queue.enqueue(id, json).thenAccept(f -> {
-                                ctx.sender().sendMessage("Saved to local queue: " + f.getName());
-                                ctx.plugin().getLogger().info("[ExportAdminLocal] actor=" + ctx.sender().getName() + ", electionId=" + id + ", file=" + f.getName());
-                            }).exceptionally(ex -> {
-                                Bukkit.getScheduler().runTask(ctx.plugin(), () -> ctx.sender().sendMessage("Could not save locally: " + ex.getMessage()));
-                                return null;
-                            });
-                        }
-                        case BOTH -> {
-                            ps.putAsync(json).thenAccept(pasteId -> {
-                                String url = ps.viewUrl(pasteId);
-                                svc.markExportedAsync(id, ctx.sender().getName());
-                                ctx.sender().sendMessage("Published (admin): " + url);
-                                ctx.plugin().getLogger().info("[ExportAdminBoth] actor=" + ctx.sender().getName() + ", electionId=" + id + ", pasteId=" + pasteId);
-                                // also keep a local copy
-                                queue.enqueue(id, json);
-                            }).exceptionally(ex -> {
-                                // Fallback: save locally
-                                queue.enqueue(id, json).thenAccept(f -> {
-                                    Bukkit.getScheduler().runTask(ctx.plugin(), () -> ctx.sender().sendMessage("Remote publish failed, saved to local queue: " + f.getName()));
-                                    ctx.plugin().getLogger().warning("[ExportAdminBoth->LocalFallback] actor=" + ctx.sender().getName() + ", electionId=" + id + ", error=" + ex.getMessage());
-                                });
-                                return null;
-                            });
-                        }
-                        case REMOTE -> {
-                            ps.putAsync(json).thenAccept(pasteId -> {
-                                String url = ps.viewUrl(pasteId);
-                                svc.markExportedAsync(id, ctx.sender().getName());
-                                ctx.sender().sendMessage("Published (admin): " + url);
-                                ctx.plugin().getLogger().info("[ExportAdmin] actor=" + ctx.sender().getName() + ", electionId=" + id + ", pasteId=" + pasteId);
-                            }).exceptionally(ex -> {
-                                // Fallback: save locally
-                                queue.enqueue(id, json).thenAccept(f -> {
-                                    Bukkit.getScheduler().runTask(ctx.plugin(), () -> ctx.sender().sendMessage("Remote publish failed, saved to local queue: " + f.getName()));
-                                    ctx.plugin().getLogger().warning("[ExportAdmin->LocalFallback] actor=" + ctx.sender().getName() + ", electionId=" + id + ", error=" + ex.getMessage());
-                                });
-                                return null;
-                            });
-                        }
+                        case LOCAL -> handleAdminLocalExport(context, messages, queue, electionId, json);
+                        case BOTH -> handleAdminBothExport(context, messages, electionsService, queue, gistService, electionId, json, markdown);
+                        case REMOTE -> handleAdminRemoteExport(context, messages, electionsService, queue, gistService, electionId, json, markdown);
                     }
                 });
             });
         });
     }
 
-    private void executeDelete(CommandContext ctx) {
-        if (!ctx.sender().hasPermission("elections.manager") && !ctx.sender().hasPermission("elections.paste") && !ctx.sender().hasPermission("elections.admin")) {
-            ctx.sender().sendMessage("You don't have permission.");
-            return;
-        }
-        if (ctx.args().length < 2) { ctx.sender().sendMessage("ID required"); return; }
-        String id = ctx.args()[1];
-        if (ctx.args().length < 3 || !"confirm".equalsIgnoreCase(ctx.args()[2])) {
-            ctx.sender().sendMessage("This will delete publication '" + id + "'. Run again with 'confirm': /" + ctx.label() + " export delete " + id + " confirm");
-            return;
-        }
-        PasteStorage ps = ctx.plugin().getPasteStorage();
-        ps.deleteAsync(id, ok -> {
-            ctx.plugin().getLogger().info("[ExportDelete] actor=" + ctx.sender().getName() + ", id=" + id + ", result=" + ok);
-            ctx.sender().sendMessage(ok ? "Deleted." : "Not deleted (unauthorized or not found).");
-        }, ex -> {
-            ctx.plugin().getLogger().warning("[ExportDelete] actor=" + ctx.sender().getName() + ", id=" + id + ", error=" + ex.getMessage());
-            ctx.sender().sendMessage("Delete failed: " + ex.getMessage());
-        });
-    }
-
-    private void executeDispatch(CommandContext ctx) {
-        if (!ctx.sender().hasPermission("elections.manager") && !ctx.sender().hasPermission("elections.admin")) {
-            ctx.sender().sendMessage("You don't have permission.");
-            return;
-        }
-        LocalExportedElectionQueue queue = ctx.plugin().getLocalExportQueue();
-        PasteStorage storage = ctx.plugin().getPasteStorage();
-        ElectionsService svc = ctx.electionsService();
-        queue.processAll(storage, svc, ctx.sender().getName()).thenAccept(report -> {
-            ctx.sender().sendMessage("Queue processed: total=" + report.total() + ", published=" + report.uploaded() + ", skipped=" + report.skipped() + ", failed=" + report.failed());
-            ctx.plugin().getLogger().info("[ExportDispatch] actor=" + ctx.sender().getName() + ", total=" + report.total() + ", uploaded=" + report.uploaded() + ", skipped=" + report.skipped() + ", failed=" + report.failed());
+    private void handleAdminLocalExport(CommandContext context,
+                                        ExportMessagesConfig messages,
+                                        LocalExportedElectionQueue queue,
+                                        int electionId,
+                                        String json) {
+        queue.enqueue(electionId, json).thenAccept(file -> {
+            String raw = messages.adminLocalSaved.replace("%file%", file.getName());
+            Component msg = MiniMessageUtil.parseOrPlain(raw);
+            context.sender().sendMessage(msg);
+            context.plugin().getLogger().info("[ExportAdminLocal] actor=" + context.sender().getName() + ", electionId=" + electionId + ", file=" + file.getName());
         }).exceptionally(ex -> {
-            Bukkit.getScheduler().runTask(ctx.plugin(), () -> ctx.sender().sendMessage("Queue processing failed: " + ex.getMessage()));
+            String raw = messages.errorCouldNotSaveLocal.replace("%error%", safeError(ex));
+            Component msg = MiniMessageUtil.parseOrPlain(raw);
+            Bukkit.getScheduler().runTask(context.plugin(), () -> context.sender().sendMessage(msg));
             return null;
         });
     }
 
+    private void handleAdminBothExport(CommandContext context,
+                                       ExportMessagesConfig messages,
+                                       ElectionsService electionsService,
+                                       LocalExportedElectionQueue queue,
+                                       GitHubGistService gistService,
+                                       int electionId,
+                                       String json,
+                                       String markdown) {
+        gistService.publish(
+                "election-admin-" + electionId + ".json",
+                json,
+                "election-admin-" + electionId + ".md",
+                markdown
+        ).thenAccept(url -> {
+            electionsService.markExportedAsync(electionId, context.sender().getName());
+            String raw = messages.adminPublished.replace("%url%", url);
+            Component msg = MiniMessageUtil.parseOrPlain(raw);
+            context.sender().sendMessage(msg);
+            context.plugin().getLogger().info("[ExportAdminBoth] actor=" + context.sender().getName() + ", electionId=" + electionId + ", url=" + url);
+            // also keep a local copy
+            queue.enqueue(electionId, json);
+        }).exceptionally(ex -> {
+            // Fallback: save locally
+            queue.enqueue(electionId, json).thenAccept(file -> {
+                String raw = messages.errorRemoteFailedLocalSaved.replace("%file%", file.getName());
+                Component msg = MiniMessageUtil.parseOrPlain(raw);
+                Bukkit.getScheduler().runTask(context.plugin(), () -> context.sender().sendMessage(msg));
+                context.plugin().getLogger().warning("[ExportAdminBoth->LocalFallback] actor=" + context.sender().getName() + ", electionId=" + electionId + ", error=" + safeError(ex));
+            });
+            return null;
+        });
+    }
+
+    private void handleAdminRemoteExport(CommandContext context,
+                                         ExportMessagesConfig messages,
+                                         ElectionsService electionsService,
+                                         LocalExportedElectionQueue queue,
+                                         GitHubGistService gistService,
+                                         int electionId,
+                                         String json,
+                                         String markdown) {
+        gistService.publish(
+                "election-admin-" + electionId + ".json",
+                json,
+                "election-admin-" + electionId + ".md",
+                markdown
+        ).thenAccept(url -> {
+            electionsService.markExportedAsync(electionId, context.sender().getName());
+            String raw = messages.adminPublished.replace("%url%", url);
+            Component msg = MiniMessageUtil.parseOrPlain(raw);
+            context.sender().sendMessage(msg);
+            context.plugin().getLogger().info("[ExportAdmin] actor=" + context.sender().getName() + ", electionId=" + electionId + ", url=" + url);
+        }).exceptionally(ex -> {
+            // Fallback: save locally
+            queue.enqueue(electionId, json).thenAccept(file -> {
+                String raw = messages.errorRemoteFailedLocalSaved.replace("%file%", file.getName());
+                Component msg = MiniMessageUtil.parseOrPlain(raw);
+                Bukkit.getScheduler().runTask(context.plugin(), () -> context.sender().sendMessage(msg));
+                context.plugin().getLogger().warning("[ExportAdmin->LocalFallback] actor=" + context.sender().getName() + ", electionId=" + electionId + ", error=" + safeError(ex));
+            });
+            return null;
+        });
+    }
+
+    // ---------------------------------------------------------------------
+    // Delete (currently unsupported, but kept for UX consistency)
+    // ---------------------------------------------------------------------
+
     /**
-     * Publish only the ballots of a given election as JSON (non-admin).
-     * Usage: /elections export ballots <local|online> <electionId>
+     * Handle deletion of a previously exported resource.
+     * <p>
+     * Currently deletion is not supported for GitHub gists, so this method
+     * simply validates permissions and arguments, then informs the user.
+     * </p>
      *
-     * Output shape: JSON object with single key "ballots" containing an array-of-arrays of candidate NAMES per ballot,
-     * e.g. { "ballots": [["Username1","Username2"], ["Username3"]] }.
-     * No voter identifiers, no ballot IDs, and no date metadata are included.
-     * Local writes to exports/ballots, Online publishes to paste service.
+     * @param context command context
      */
-    private void executeBallotsExport(CommandContext ctx) {
-        if (!ctx.sender().hasPermission("elections.export.ballots") && !ctx.sender().hasPermission("elections.export")) {
-            ctx.sender().sendMessage("You don't have permission (elections.export.ballots).");
+    private void executeDelete(CommandContext context, ExportMessagesConfig messages) {
+        Elections plugin = context.plugin();
+
+        if (!context.sender().hasPermission("elections.manager") &&
+            !context.sender().hasPermission("elections.paste") &&
+            !context.sender().hasPermission("elections.admin")) {
+            Component msg = MiniMessageUtil.parseOrPlain(messages.errorNoPermission);
+            context.sender().sendMessage(msg);
             return;
         }
-        if (ctx.args().length < 3) { ctx.sender().sendMessage("Usage: /" + ctx.label() + " export ballots <local|online> <electionId>"); return; }
-        String mode = ctx.args()[1].toLowerCase(java.util.Locale.ROOT);
+
+        if (context.args().length < 2) {
+            Component msg = MiniMessageUtil.parseOrPlain(messages.deleteIdRequired);
+            context.sender().sendMessage(msg);
+            return;
+        }
+
+        String id = context.args()[1];
+        plugin.getLogger().info("[ExportDelete] actor=" + context.sender().getName() + ", id=" + id + ", result=unsupported_for_gists");
+
+        String raw = messages.deleteUnsupported
+                .replace("%id%", id);
+        Component msg = MiniMessageUtil.parseOrPlain(raw);
+        context.sender().sendMessage(msg);
+    }
+
+    // ---------------------------------------------------------------------
+    // Dispatch queue
+    // ---------------------------------------------------------------------
+
+    /**
+     * Dispatch all locally queued election exports and publish them remotely.
+     *
+     * @param context command context
+     */
+    private void executeDispatch(CommandContext context, ExportMessagesConfig messages) {
+        Elections plugin = context.plugin();
+        LocalExportedElectionQueue queue = plugin.getLocalExportQueue();
+        ElectionsService electionsService = context.electionsService();
+        GitHubGistService gistService = new GitHubGistClient();
+
+        queue.processAll(gistService, electionsService, context.sender().getName()).thenAccept(report -> {
+            String raw = messages.dispatchProcessed
+                    .replace("%total%", String.valueOf(report.total()))
+                    .replace("%uploaded%", String.valueOf(report.uploaded()))
+                    .replace("%skipped%", String.valueOf(report.skipped()))
+                    .replace("%failed%", String.valueOf(report.failed()));
+            Component msg = MiniMessageUtil.parseOrPlain(raw);
+            context.sender().sendMessage(msg);
+            plugin.getLogger().info("[ExportDispatch] actor=" + context.sender().getName() + ", total=" + report.total() + ", uploaded=" + report.uploaded() + ", skipped=" + report.skipped() + ", failed=" + report.failed());
+        }).exceptionally(ex -> {
+            String raw = messages.dispatchFailed.replace("%error%", safeError(ex));
+            Component msg = MiniMessageUtil.parseOrPlain(raw);
+            Bukkit.getScheduler().runTask(plugin, () -> context.sender().sendMessage(msg));
+            return null;
+        });
+    }
+
+    // ---------------------------------------------------------------------
+    // Ballots export (user)
+    // ---------------------------------------------------------------------
+
+    /**
+     * Publish only the ballots of a given election as JSON (non-admin).
+     *
+     * @param context command context
+     */
+    private void executeBallotsExport(CommandContext context, ExportMessagesConfig messages) {
+        Elections plugin = context.plugin();
+
+        if (!context.sender().hasPermission("elections.export.ballots") &&
+            !context.sender().hasPermission("elections.export")) {
+            Component msg = MiniMessageUtil.parseOrPlain(messages.errorNoPermission);
+            context.sender().sendMessage(msg);
+            return;
+        }
+
+        if (context.args().length < 3) {
+            String raw = messages.ballotsUsage
+                    .replace("%label%", context.label());
+            Component msg = MiniMessageUtil.parseOrPlain(raw);
+            context.sender().sendMessage(msg);
+            return;
+        }
+
+        String mode = context.args()[1].toLowerCase(java.util.Locale.ROOT);
         boolean isLocal = "local".equals(mode);
         boolean isOnline = "online".equals(mode);
-        if (!isLocal && !isOnline) { ctx.sender().sendMessage("Invalid mode. Use 'local' or 'online'."); return; }
-        int id = ctx.requireInt(2, "id");
-        ElectionsService electionsService = ctx.electionsService();
-        electionsService.getElectionAsync(id).whenComplete((opt, err) -> {
-            if (err != null) { org.bukkit.Bukkit.getScheduler().runTask(ctx.plugin(), () -> ctx.sender().sendMessage("Lookup failed: " + err.getMessage())); return; }
-            if (opt.isEmpty()) { org.bukkit.Bukkit.getScheduler().runTask(ctx.plugin(), () -> ctx.sender().sendMessage("Election not found.")); return; }
-           Bukkit.getScheduler().runTaskAsynchronously(ctx.plugin(), () -> {
-                Election election = opt.get();
 
-                // Map candidate id -> name for lookup
-                Map<Integer, String> nameById = election.getCandidates().stream().collect(Collectors.toMap(
-                        Candidate::getId,
-                        Candidate::getName,
-                        (a, b) -> a,
-                        LinkedHashMap::new
-                ));
+        if (!isLocal && !isOnline) {
+            Component msg = MiniMessageUtil.parseOrPlain(messages.ballotsInvalidMode);
+            context.sender().sendMessage(msg);
+            return;
+        }
 
-                // Build list-of-list of candidate NAMES per ballot
-               List<List<String>> ballotsByName = election.getBallots().stream()
+        int electionId = context.requireInt(2, "id");
+        ElectionsService electionsService = context.electionsService();
+        electionsService.getElectionAsync(electionId).whenComplete((optionalElection, throwable) -> {
+            if (throwable != null) {
+                String raw = messages.errorLookupFailed.replace("%error%", safeError(throwable));
+                Component msg = MiniMessageUtil.parseOrPlain(raw);
+                Bukkit.getScheduler().runTask(plugin, () -> context.sender().sendMessage(msg));
+                return;
+            }
+
+            if (optionalElection.isEmpty()) {
+                Component msg = MiniMessageUtil.parseOrPlain(messages.errorElectionNotFound);
+                Bukkit.getScheduler().runTask(plugin, () -> context.sender().sendMessage(msg));
+                return;
+            }
+
+            Bukkit.getScheduler().runTaskAsynchronously(plugin, () -> {
+                Election election = optionalElection.get();
+
+                Map<Integer, String> candidateNameById = election.getCandidates().stream().collect(
+                        Collectors.toMap(
+                                Candidate::getId,
+                                Candidate::getName,
+                                (first, second) -> first,
+                                LinkedHashMap::new
+                        )
+                );
+
+                List<List<String>> ballotsByName = election.getBallots().stream()
                         .map(vote -> vote.getSelections().stream()
-                                .map(i -> nameById.getOrDefault(i, String.valueOf(i)))
+                                .map(candidateId -> candidateNameById.getOrDefault(candidateId, String.valueOf(candidateId)))
                                 .collect(Collectors.toList())
                         ).collect(Collectors.toList());
 
-                // Root JSON: only the ballots array (array-of-arrays of usernames)
-                LinkedHashMap<java.lang.String, java.lang.Object> root = new LinkedHashMap<>();
+                LinkedHashMap<String, Object> root = new LinkedHashMap<>();
                 root.put("ballots", ballotsByName);
 
-                Gson gson = new com.google.gson.GsonBuilder()
+                Gson gson = new GsonBuilder()
                         .disableHtmlEscaping()
                         .setPrettyPrinting()
                         .create();
                 String json = gson.toJson(root);
 
                 if (isLocal) {
-                    File base = new File(ctx.plugin().getDataFolder(), DataFolder.EXPORTS.getPath());
-                    File ballotsDir = new File(base, "ballots");
-                    if (!ballotsDir.exists() && !ballotsDir.mkdirs() && !ballotsDir.exists()) {
-                        org.bukkit.Bukkit.getScheduler().runTask(ctx.plugin(), () -> ctx.sender().sendMessage("Could not create ballots directory."));
-                        return;
-                    }
-                    String ts = String.valueOf(System.currentTimeMillis());
-                    File out = new File(ballotsDir, "ballots-" + election.getId() + "-" + ts + ".json");
-                    try (FileOutputStream fos = new FileOutputStream(out)) {
-                        fos.write(json.getBytes(java.nio.charset.StandardCharsets.UTF_8));
-                        org.bukkit.Bukkit.getScheduler().runTask(ctx.plugin(), () -> ctx.sender().sendMessage("Saved ballots to: " + out.getName() + " (" + ballotsByName.size() + ")"));
-                        ctx.plugin().getLogger().info("[ExportBallotsLocal] actor=" + ctx.sender().getName() + ", electionId=" + election.getId() + ", file=" + out.getName() + ", count=" + ballotsByName.size());
-                    } catch (java.io.IOException io) {
-                        org.bukkit.Bukkit.getScheduler().runTask(ctx.plugin(), () -> ctx.sender().sendMessage("Ballots local save failed: " + io.getMessage()));
-                        ctx.plugin().getLogger().warning("[ExportBallotsLocal] actor=" + ctx.sender().getName() + ", electionId=" + election.getId() + ", error=" + io.getMessage());
-                    }
+                    saveBallotsLocal(context, messages, election.getId(), ballotsByName, json, false);
                 } else {
-                    PasteStorage storage = ctx.plugin().getPasteStorage();
-                    storage.putAsync(json).thenAccept(pasteId -> {
-                        String url = storage.viewUrl(pasteId);
-                        ctx.sender().sendMessage("Published ballots: " + url);
-                        ctx.plugin().getLogger().info("[ExportBallotsOnline] actor=" + ctx.sender().getName() + ", electionId=" + election.getId() + ", pasteId=" + pasteId + ", count=" + ballotsByName.size());
-                    }).exceptionally(ex -> {
-                        org.bukkit.Bukkit.getScheduler().runTask(ctx.plugin(), () -> ctx.sender().sendMessage("Ballots publish failed: " + ex.getMessage()));
-                        ctx.plugin().getLogger().warning("[ExportBallotsOnline] actor=" + ctx.sender().getName() + ", electionId=" + election.getId() + ", error=" + ex.getMessage());
-                        return null;
-                    });
+                    publishBallotsOnline(context, messages, election.getId(), ballotsByName, json, false);
                 }
             });
         });
     }
 
+    // ---------------------------------------------------------------------
+    // Ballots export (admin)
+    // ---------------------------------------------------------------------
+
     /**
-     * Publish only the ballots of a given election as JSON with voter names (admin).
-     * Usage: /elections export ballots admin <local|online> <electionId>
+     * Publish only the ballots of a given election as JSON with voter names
+     * (admin view).
+     *
+     * @param context command context
      */
-    private void executeBallotsAdminExport(CommandContext ctx) {
-        if (!ctx.sender().hasPermission("elections.export.ballots.admin") && !ctx.sender().hasPermission("elections.admin")) {
-            ctx.sender().sendMessage("You don't have permission (elections.export.ballots.admin).");
+    private void executeBallotsAdminExport(CommandContext context, ExportMessagesConfig messages) {
+        Elections plugin = context.plugin();
+
+        if (!context.sender().hasPermission("elections.export.ballots.admin") &&
+            !context.sender().hasPermission("elections.admin")) {
+            Component msg = MiniMessageUtil.parseOrPlain(messages.errorNoPermission);
+            context.sender().sendMessage(msg);
             return;
         }
-        if (ctx.args().length < 4) { ctx.sender().sendMessage("Usage: /" + ctx.label() + " export ballots admin <local|online> <electionId>"); return; }
-        String mode = ctx.args()[2].toLowerCase(java.util.Locale.ROOT);
+
+        if (context.args().length < 4) {
+            String raw = messages.ballotsAdminUsage
+                    .replace("%label%", context.label());
+            Component msg = MiniMessageUtil.parseOrPlain(raw);
+            context.sender().sendMessage(msg);
+            return;
+        }
+
+        String mode = context.args()[2].toLowerCase(java.util.Locale.ROOT);
         boolean isLocal = "local".equals(mode);
         boolean isOnline = "online".equals(mode);
-        if (!isLocal && !isOnline) { ctx.sender().sendMessage("Invalid mode. Use 'local' or 'online'."); return; }
-        int id = ctx.requireInt(3, "id");
-        ElectionsService electionsService = ctx.electionsService();
-        electionsService.getElectionAsync(id).whenComplete((opt, err) -> {
-            if (err != null) { Bukkit.getScheduler().runTask(ctx.plugin(), () -> ctx.sender().sendMessage("Lookup failed: " + err.getMessage())); return; }
-            if (opt.isEmpty()) { Bukkit.getScheduler().runTask(ctx.plugin(), () -> ctx.sender().sendMessage("Election not found.")); return; }
-            electionsService.listVotersAsync(id).whenComplete((voters, vErr) -> {
-                if (vErr != null) {Bukkit.getScheduler().runTask(ctx.plugin(), () -> ctx.sender().sendMessage("Failed to fetch voters: " + vErr.getMessage())); return; }
-                Map<Integer, String> voterNameById = voters.stream().collect(Collectors.toMap(Voter::getId, Voter::getName, (a1,b) -> a1));
-                Bukkit.getScheduler().runTaskAsynchronously(ctx.plugin(), () -> {
-                    Election election = opt.get();
-                    Map<Integer, String> nameById = election.getCandidates().stream().collect(java.util.stream.Collectors.toMap(
-                            Candidate::getId,
-                            Candidate::getName,
-                            (a, b) -> a,
-                            LinkedHashMap::new
-                    ));
-                    LinkedHashMap<String, Object> root = new LinkedHashMap<>();
-                    List<java.util.Map<String, Object>> ballots = new ArrayList<>();
-                    for (Vote vote : election.getBallots()) {
-                        LinkedHashMap<String, Object> b = new LinkedHashMap<>();
-                        b.put("id", vote.getId());
-                        String vn = voterNameById.get(vote.getVoterId());
-                        if (vn != null) b.put("voter", vn);
-                        // Convert numeric selections to candidate NAMES for auditability
-                        List<String> selNames = vote.getSelections().stream()
-                                .map(i -> nameById.getOrDefault(i, String.valueOf(i)))
+
+        if (!isLocal && !isOnline) {
+            Component msg = MiniMessageUtil.parseOrPlain(messages.ballotsInvalidMode);
+            context.sender().sendMessage(msg);
+            return;
+        }
+
+        int electionId = context.requireInt(3, "id");
+        ElectionsService electionsService = context.electionsService();
+        electionsService.getElectionAsync(electionId).whenComplete((optionalElection, throwable) -> {
+            if (throwable != null) {
+                String raw = messages.errorLookupFailed.replace("%error%", safeError(throwable));
+                Component msg = MiniMessageUtil.parseOrPlain(raw);
+                Bukkit.getScheduler().runTask(plugin, () -> context.sender().sendMessage(msg));
+                return;
+            }
+
+            if (optionalElection.isEmpty()) {
+                Component msg = MiniMessageUtil.parseOrPlain(messages.errorElectionNotFound);
+                Bukkit.getScheduler().runTask(plugin, () -> context.sender().sendMessage(msg));
+                return;
+            }
+
+            electionsService.listVotersAsync(electionId).whenComplete((voters, votersError) -> {
+                if (votersError != null) {
+                    String raw = messages.errorLookupFailed.replace("%error%", safeError(votersError));
+                    Component msg = MiniMessageUtil.parseOrPlain(raw);
+                    Bukkit.getScheduler().runTask(plugin, () -> context.sender().sendMessage(msg));
+                    return;
+                }
+
+                Map<Integer, String> voterNameById = voters.stream().collect(
+                        Collectors.toMap(
+                                Voter::getId,
+                                Voter::getName,
+                                (first, second) -> first
+                        )
+                );
+
+                Function<Integer, String> voterNameProvider = voterNameById::get;
+
+                Bukkit.getScheduler().runTaskAsynchronously(plugin, () -> {
+                    Election election = optionalElection.get();
+
+                    Map<Integer, String> candidateNameById = election.getCandidates().stream().collect(
+                            Collectors.toMap(
+                                    Candidate::getId,
+                                    Candidate::getName,
+                                    (first, second) -> first,
+                                    LinkedHashMap::new
+                            )
+                    );
+
+                    List<Map<String, Object>> ballotsDetailed = election.getBallots().stream().map(vote -> {
+                        Map<String, Object> ballot = new LinkedHashMap<>();
+                        ballot.put("voter", voterNameProvider.apply(vote.getVoterId()));
+                        List<String> selections = vote.getSelections().stream()
+                                .map(candidateId -> candidateNameById.getOrDefault(candidateId, String.valueOf(candidateId)))
                                 .collect(Collectors.toList());
-                        b.put("selections", selNames);
-                        ballots.add(b);
-                    }
-                    root.put("ballots", ballots);
-                    com.google.gson.Gson gson = new com.google.gson.GsonBuilder()
+                        ballot.put("selections", selections);
+                        return ballot;
+                    }).collect(Collectors.toList());
+
+                    LinkedHashMap<String, Object> root = new LinkedHashMap<>();
+                    root.put("ballots", ballotsDetailed);
+
+                    Gson gson = new GsonBuilder()
                             .disableHtmlEscaping()
                             .setPrettyPrinting()
                             .create();
                     String json = gson.toJson(root);
+
                     if (isLocal) {
-                        File base = new File(ctx.plugin().getDataFolder(), DataFolder.EXPORTS.getPath());
-                        File ballotsDir = new File(base, "ballots");
-                        if (!ballotsDir.exists() && !ballotsDir.mkdirs() && !ballotsDir.exists()) {
-                            org.bukkit.Bukkit.getScheduler().runTask(ctx.plugin(), () -> ctx.sender().sendMessage("Could not create ballots directory."));
-                            return;
-                        }
-                        String ts = String.valueOf(System.currentTimeMillis());
-                        File out = new File(ballotsDir, "ballots-admin-" + election.getId() + "-" + ts + ".json");
-                        try (FileOutputStream fos = new FileOutputStream(out)) {
-                            fos.write(json.getBytes(StandardCharsets.UTF_8));
-                            Bukkit.getScheduler().runTask(ctx.plugin(), () -> ctx.sender().sendMessage("Saved ballots (admin) to: " + out.getName() + " (" + ballots.size() + ")"));
-                            ctx.plugin().getLogger().info("[ExportBallotsAdminLocal] actor=" + ctx.sender().getName() + ", electionId=" + election.getId() + ", file=" + out.getName() + ", count=" + ballots.size());
-                        } catch (java.io.IOException io) {
-                            Bukkit.getScheduler().runTask(ctx.plugin(), () -> ctx.sender().sendMessage("Ballots (admin) local save failed: " + io.getMessage()));
-                            ctx.plugin().getLogger().warning("[ExportBallotsAdminLocal] actor=" + ctx.sender().getName() + ", electionId=" + election.getId() + ", error=" + io.getMessage());
-                        }
+                        saveBallotsLocal(context, messages, election.getId(), ballotsDetailed, json, true);
                     } else {
-                        PasteStorage storage = ctx.plugin().getPasteStorage();
-                        storage.putAsync(json).thenAccept(pasteId -> {
-                            String url = storage.viewUrl(pasteId);
-                            ctx.sender().sendMessage("Published ballots (admin): " + url);
-                            ctx.plugin().getLogger().info("[ExportBallotsAdminOnline] actor=" + ctx.sender().getName() + ", electionId=" + election.getId() + ", pasteId=" + pasteId + ", count=" + ballots.size());
-                        }).exceptionally(ex -> {
-                            Bukkit.getScheduler().runTask(ctx.plugin(), () -> ctx.sender().sendMessage("Ballots (admin) publish failed: " + ex.getMessage()));
-                            ctx.plugin().getLogger().warning("[ExportBallotsAdminOnline] actor=" + ctx.sender().getName() + ", electionId=" + election.getId() + ", error=" + ex.getMessage());
-                            return null;
-                        });
+                        publishBallotsOnline(context, messages, election.getId(), ballotsDetailed, json, true);
                     }
                 });
             });
         });
     }
 
-    /**
-     * Route ballots-related exports:
-     * - ballots <local|online> <id>
-     * - ballots admin <local|online> <id>
-     */
-    private void executeBallotsRouter(CommandContext ctx) {
-        String[] a = ctx.args();
-        if (a.length >= 2 && "admin".equalsIgnoreCase(a[1])) executeBallotsAdminExport(ctx);
-        else executeBallotsExport(ctx);
+    // ---------------------------------------------------------------------
+    // Ballots helpers
+    // ---------------------------------------------------------------------
+
+    private void saveBallotsLocal(CommandContext context,
+                                  ExportMessagesConfig messages,
+                                  int electionId,
+                                  Object ballotsPayload,
+                                  String json,
+                                  boolean admin) {
+        Elections plugin = context.plugin();
+        int count = (ballotsPayload instanceof List<?> list) ? list.size() : 0;
+
+        File base = new File(plugin.getDataFolder(), DataFolder.EXPORTS.getPath());
+        File ballotsDir = new File(base, "ballots");
+
+        if (!ballotsDir.exists() && !ballotsDir.mkdirs() && !ballotsDir.exists()) {
+            String raw = messages.ballotsDirectoryCreateFailed;
+            Component msg = MiniMessageUtil.parseOrPlain(raw);
+            Bukkit.getScheduler().runTask(plugin, () -> context.sender().sendMessage(msg));
+            return;
+        }
+
+        String timestamp = String.valueOf(System.currentTimeMillis());
+        File outputFile = new File(ballotsDir, "ballots-" + electionId + "-" + timestamp + ".json");
+
+        try (FileOutputStream outputStream = new FileOutputStream(outputFile)) {
+            outputStream.write(json.getBytes(StandardCharsets.UTF_8));
+            String raw = (admin ? messages.ballotsAdminSavedLocal : messages.ballotsSavedLocal)
+                    .replace("%file%", outputFile.getName())
+                    .replace("%count%", String.valueOf(count));
+            Component msg = MiniMessageUtil.parseOrPlain(raw);
+            Bukkit.getScheduler().runTask(plugin, () -> context.sender().sendMessage(msg));
+            plugin.getLogger().info("[" + (admin ? "ExportBallotsAdminLocal" : "ExportBallotsLocal") + "] actor=" + context.sender().getName() + ", electionId=" + electionId + ", file=" + outputFile.getName() + ", count=" + count);
+        } catch (IOException io) {
+            String raw = (admin ? messages.ballotsAdminLocalFailed : messages.ballotsLocalFailed)
+                    .replace("%error%", safeError(io));
+            Component msg = MiniMessageUtil.parseOrPlain(raw);
+            Bukkit.getScheduler().runTask(plugin, () -> context.sender().sendMessage(msg));
+            plugin.getLogger().warning("[" + (admin ? "ExportBallotsAdminLocal" : "ExportBallotsLocal") + "] actor=" + context.sender().getName() + ", electionId=" + electionId + ", error=" + safeError(io));
+        }
     }
 
+    private void publishBallotsOnline(CommandContext context,
+                                      ExportMessagesConfig messages,
+                                      int electionId,
+                                      Object ballotsPayload,
+                                      String json,
+                                      boolean admin) {
+        Elections plugin = context.plugin();
+        int count = (ballotsPayload instanceof List<?> list) ? list.size() : 0;
+
+        GitHubGistService gistService = new GitHubGistClient();
+        gistService.publish("ballots-" + electionId + ".json", json).thenAccept(url -> {
+            String raw = (admin ? messages.ballotsAdminPublished : messages.ballotsPublished)
+                    .replace("%url%", url)
+                    .replace("%count%", String.valueOf(count));
+            Component msg = MiniMessageUtil.parseOrPlain(raw);
+            Bukkit.getScheduler().runTask(plugin, () -> context.sender().sendMessage(msg));
+            plugin.getLogger().info("[" + (admin ? "ExportBallotsAdminOnline" : "ExportBallotsOnline") + "] actor=" + context.sender().getName() + ", electionId=" + electionId + ", url=" + url + ", count=" + count);
+        }).exceptionally(ex -> {
+            String raw = (admin ? messages.ballotsAdminPublishFailed : messages.ballotsPublishFailed)
+                    .replace("%error%", safeError(ex));
+            Component msg = MiniMessageUtil.parseOrPlain(raw);
+            Bukkit.getScheduler().runTask(plugin, () -> context.sender().sendMessage(msg));
+            plugin.getLogger().warning("[" + (admin ? "ExportBallotsAdminOnline" : "ExportBallotsOnline") + "] actor=" + context.sender().getName() + ", electionId=" + electionId + ", error=" + safeError(ex));
+            return null;
+        });
+    }
+
+    // ---------------------------------------------------------------------
+    // Ballots router
+    // ---------------------------------------------------------------------
+
+    /**
+     * Route ballots-related exports:
+     * <ul>
+     *     <li>{@code ballots <local|online> <id>}</li>
+     *     <li>{@code ballots admin <local|online> <id>}</li>
+     * </ul>
+     *
+     * @param context command context
+     */
+    private void executeBallotsRouter(CommandContext context, ExportMessagesConfig messages) {
+        String[] args = context.args();
+        if (args.length >= 2 && "admin".equalsIgnoreCase(args[1])) {
+            executeBallotsAdminExport(context, messages);
+        } else {
+            executeBallotsExport(context, messages);
+        }
+    }
+
+    // ---------------------------------------------------------------------
+    // Tab completion
+    // ---------------------------------------------------------------------
+
     @Override
-    public List<String> complete(CommandContext ctx) {
-        String[] a = ctx.args();
-        if (a.length == 1) {
-            List<String> base = ctx.filter(List.of("admin", "delete", "dispatch", "local", "both", "ballots"), a[0]);
-            List<String> ids = ctx.filter(ctx.electionIds(), a[0]);
-            // merge without duplicates, prefer ids first for convenience
+    public List<String> complete(CommandContext context) {
+        String[] args = context.args();
+
+        if (args.length == 1) {
+            List<String> base = context.filter(List.of("admin", "delete", "dispatch", "local", "both", "ballots"), args[0]);
+            List<String> ids = context.filter(context.electionIds(), args[0]);
             return java.util.stream.Stream.concat(ids.stream(), base.stream()).distinct().toList();
         }
-        if (a.length == 2) {
-            if ("admin".equalsIgnoreCase(a[0])) return ctx.filter(List.of("local", "both"), a[1]);
-            if ("delete".equalsIgnoreCase(a[0]) || "dispatch".equalsIgnoreCase(a[0])) return List.of();
-            if ("ballots".equalsIgnoreCase(a[0])) return ctx.filter(List.of("local", "online", "admin"), a[1]);
-            if ("local".equalsIgnoreCase(a[0]) || "both".equalsIgnoreCase(a[0])) return ctx.filter(ctx.electionIds(), a[1]);
+
+        if (args.length == 2) {
+            if ("admin".equalsIgnoreCase(args[0])) {
+                return context.filter(List.of("local", "both"), args[1]);
+            }
+            if ("delete".equalsIgnoreCase(args[0]) || "dispatch".equalsIgnoreCase(args[0])) {
+                return List.of();
+            }
+            if ("ballots".equalsIgnoreCase(args[0])) {
+                return context.filter(List.of("local", "online", "admin"), args[1]);
+            }
+            if ("local".equalsIgnoreCase(args[0]) || "both".equalsIgnoreCase(args[0])) {
+                return context.filter(context.electionIds(), args[1]);
+            }
             return List.of();
         }
-        if (a.length == 3) {
-            if ("admin".equalsIgnoreCase(a[0])) return ctx.filter(ctx.electionIds(), a[2]);
-            if ("delete".equalsIgnoreCase(a[0])) return ctx.filter(List.of("confirm"), a[2]);
-            if ("ballots".equalsIgnoreCase(a[0])) {
-                if ("admin".equalsIgnoreCase(a[1])) return ctx.filter(List.of("local", "online"), a[2]);
-                return ctx.filter(ctx.electionIds(), a[2]);
+
+        if (args.length == 3) {
+            if ("admin".equalsIgnoreCase(args[0])) {
+                return context.filter(context.electionIds(), args[2]);
+            }
+            if ("delete".equalsIgnoreCase(args[0])) {
+                return context.filter(List.of("confirm"), args[2]);
+            }
+            if ("ballots".equalsIgnoreCase(args[0])) {
+                if ("admin".equalsIgnoreCase(args[1])) {
+                    return context.filter(List.of("local", "online"), args[2]);
+                }
+                return context.filter(context.electionIds(), args[2]);
             }
         }
-        if (a.length == 4) {
-            if ("ballots".equalsIgnoreCase(a[0]) && "admin".equalsIgnoreCase(a[1])) return ctx.filter(ctx.electionIds(), a[3]);
+
+        if (args.length == 4) {
+            if ("ballots".equalsIgnoreCase(args[0]) && "admin".equalsIgnoreCase(args[1])) {
+                return context.filter(context.electionIds(), args[3]);
+            }
         }
+
         return List.of();
     }
 
+    // ---------------------------------------------------------------------
+    // Utilities
+    // ---------------------------------------------------------------------
+
+    /**
+     * Utility to safely extract a message from a {@link Throwable} without
+     * leaking nulls into user-visible output.
+     *
+     * @param throwable error
+     * @return non-null message
+     */
+    private String safeError(Throwable throwable) {
+        if (throwable == null) {
+            return "unknown";
+        }
+        String message = throwable.getMessage();
+        if (message == null || message.isBlank()) {
+            return throwable.getClass().getSimpleName();
+        }
+        return message;
+    }
 }
