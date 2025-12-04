@@ -5,7 +5,8 @@ public enum DataFolder {
     MENUS("menus"),
     EXPORTS("exports"),
     GITHUB("github"),
-    EXPORT_MESSAGES("export-messages");
+    EXPORT_MESSAGES("export-messages"),
+    ERRORS("errors");
 
 
     private final String path;

@@ -6,12 +6,14 @@ import io.papermc.paper.registry.data.dialog.body.DialogBody;
 import io.papermc.paper.registry.data.dialog.input.DialogInput;
 import io.papermc.paper.registry.data.dialog.input.SingleOptionDialogInput;
 import net.democracycraft.elections.Elections;
+import net.democracycraft.elections.api.model.BallotError;
 import net.democracycraft.elections.api.model.Candidate;
 import net.democracycraft.elections.api.model.Election;
 import net.democracycraft.elections.api.service.ElectionsService;
 import net.democracycraft.elections.api.ui.ParentMenu;
 import net.democracycraft.elections.ui.ChildMenuImp;
 import net.democracycraft.elections.api.ui.AutoDialog;
+import net.democracycraft.elections.ui.common.ErrorMenu;
 import net.democracycraft.elections.ui.common.LoadingMenu;
 import net.democracycraft.elections.util.sound.SoundHelper;
 import net.democracycraft.elections.util.sound.SoundSpec;
@@ -130,22 +132,45 @@ public class SimplePreferentialBallotMenu extends ChildMenuImp {
                 String key = "RANK_" + c.getId();
                 String txt = response.getText(key);
                 int idx;
-                try { idx = txt == null ? 0 : Integer.parseInt(txt); } catch (NumberFormatException e) { idx = 0; }
+                try {
+                    idx = txt == null ? 0 : Integer.parseInt(txt);
+                } catch (NumberFormatException e) {
+                    idx = 0;
+                }
                 if (idx >= 1 && idx <= maxRank) {
                     ranksByCandidate.put(c.getId(), idx);
                 }
             }
-            if (ranksByCandidate.isEmpty() || ranksByCandidate.size() < min) { playerActor.sendMessage(miniMessage(applyPlaceholders(config.selectAtLeast, Map.of("%min%", String.valueOf(min))), null)); new SimplePreferentialBallotMenu(playerActor, getParentMenu(), electionsService, electionId).open(); return; }
+
+            if (ranksByCandidate.isEmpty() || ranksByCandidate.size() < min) {
+                String base = BallotError.INSUFFICIENT_PREFERENCES.errorString();
+                String detail = applyPlaceholders(config.selectAtLeast, Map.of("%min%", String.valueOf(min)));
+                new ErrorMenu(playerActor, getParentMenu(), "error_simple_pref_min_" + electionId,
+                        List.of(base, detail)).open();
+                return;
+            }
             int maximum = Math.max(1, election.getCandidates().size());
             Set<Integer> seen = new HashSet<>();
             for (Integer r : ranksByCandidate.values()) {
-                if (r == null || r < 1 || r > maximum) { playerActor.sendMessage(miniMessage(applyPlaceholders(config.invalidRank, Map.of("%rank%", String.valueOf(r))), null)); new SimplePreferentialBallotMenu(playerActor, getParentMenu(), electionsService, electionId).open(); return; }
-                if (!seen.add(r)) { playerActor.sendMessage(miniMessage(applyPlaceholders(config.duplicateRank, Map.of("%rank%", String.valueOf(r))), null)); new SimplePreferentialBallotMenu(playerActor, getParentMenu(), electionsService, electionId).open(); return; }
+                if (r == null || r < 1 || r > maximum) {
+                    String base = BallotError.INVALID_RANK.errorString();
+                    String detail = applyPlaceholders(config.invalidRank, Map.of("%rank%", String.valueOf(r)));
+                    new ErrorMenu(playerActor, getParentMenu(), "error_simple_pref_invalid_rank_" + electionId,
+                            List.of(base, detail)).open();
+                    return;
+                }
+                if (!seen.add(r)) {
+                    String base = BallotError.DUPLICATE_RANKING.errorString();
+                    String detail = applyPlaceholders(config.duplicateRank, Map.of("%rank%", String.valueOf(r)));
+                    new ErrorMenu(playerActor, getParentMenu(), "error_simple_pref_dup_rank_" + electionId,
+                            List.of(base, detail)).open();
+                    return;
+                }
             }
-            List<Map.Entry<Integer,Integer>> entries = new ArrayList<>(ranksByCandidate.entrySet());
+            List<Map.Entry<Integer, Integer>> entries = new ArrayList<>(ranksByCandidate.entrySet());
             entries.sort(java.util.Comparator.comparingInt(Map.Entry::getValue));
             List<Integer> orderedCandidateIds = new ArrayList<>();
-            for (Map.Entry<Integer,Integer> entry : entries) orderedCandidateIds.add(entry.getKey());
+            for (Map.Entry<Integer, Integer> entry : entries) orderedCandidateIds.add(entry.getKey());
             new LoadingMenu(playerActor, getParentMenu(), miniMessage(config.loadingTitle, ph), miniMessage(config.loadingMessage, ph)).open();
             new BukkitRunnable() {
                 @Override
@@ -157,8 +182,16 @@ public class SimplePreferentialBallotMenu extends ChildMenuImp {
                         public void run() {
                             // Close loading dialog after async completes
                             playerActor.closeDialog();
-                            if (!ok) { playerActor.sendMessage(miniMessage(config.submissionFailed)); new SimplePreferentialBallotMenu(playerActor, getParentMenu(), electionsService, electionId).open(); }
-                            else { playerActor.sendMessage(miniMessage(config.submitted)); SoundHelper.play(playerActor, config.successSound); BallotSessions.clear(playerActor.getUniqueId(), electionId); }
+                            if (!ok) {
+                                String base = BallotError.SUBMISSION_FAILED.errorString();
+                                String detail = config.submissionFailed;
+                                new ErrorMenu(playerActor, getParentMenu(), "error_simple_pref_submit_" + electionId,
+                                        List.of(base, detail)).open();
+                            } else {
+                                playerActor.sendMessage(miniMessage(config.submitted));
+                                SoundHelper.play(playerActor, config.successSound);
+                                BallotSessions.clear(playerActor.getUniqueId(), electionId);
+                            }
                         }
                     }.runTask(Elections.getInstance());
                 }
