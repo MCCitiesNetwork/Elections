@@ -4,14 +4,17 @@ import io.papermc.paper.dialog.Dialog;
 import io.papermc.paper.registry.data.dialog.DialogBase;
 import io.papermc.paper.registry.data.dialog.body.DialogBody;
 import io.papermc.paper.registry.data.dialog.input.DialogInput;
+import io.papermc.paper.registry.data.dialog.input.NumberRangeDialogInput;
 import net.democracycraft.elections.Elections;
+import net.democracycraft.elections.api.model.BallotError;
 import net.democracycraft.elections.api.model.Candidate;
 import net.democracycraft.elections.api.model.Election;
 import net.democracycraft.elections.api.service.ElectionsService;
 import net.democracycraft.elections.api.ui.ParentMenu;
+import net.democracycraft.elections.data.VotingSystem;
 import net.democracycraft.elections.ui.ChildMenuImp;
-import net.democracycraft.elections.util.HeadUtil;
 import net.democracycraft.elections.api.ui.AutoDialog;
+import net.democracycraft.elections.ui.common.ErrorMenu;
 import net.democracycraft.elections.ui.common.LoadingMenu;
 import net.democracycraft.elections.util.sound.SoundHelper;
 import net.democracycraft.elections.util.sound.SoundSpec;
@@ -55,8 +58,6 @@ public class PreferentialBallotMenu extends ChildMenuImp {
         public String submitted = "<green><bold>Ballot submitted.</bold></green>";
         public String clearBtn = "<yellow>Clear</yellow>";
         public String backBtn = "<red><bold>Back</bold></red>";
-        /** Rank input label for a candidate. Placeholders: %max%, %candidate_name%, %candidate_party%. */
-        public String rankForFormat = "<aqua>Rank (1..%max%) for %candidate_name% (%candidate_party%)</aqua>";
         /** YAML header with supported placeholders. */
         public String yamlHeader = "PreferentialBallotMenu configuration. Placeholders: %election_title%, %min%, %max%, %rank%, %candidate_name%, %candidate_party%. ";
         /** Loading dialog title shown while submitting. */
@@ -66,10 +67,12 @@ public class PreferentialBallotMenu extends ChildMenuImp {
         /** Sound to play when submission succeeds. */
         public SoundSpec successSound = new SoundSpec();
         public String valueGrayFormat = "<gray>%value%</gray>";
-        /** Candidate checkbox label format. Placeholders: %candidate_name%, %candidate_party%. */
-        public String candidateNameLabelFormat = "<gray>%candidate_name% (%candidate_party%)</gray>";
         /** Label to use when a candidate has no party set (null/blank). */
         public String partyUnknown = "Independent";
+        /** Label for each candidate slider. Placeholders: %candidate_name%, %candidate_party%, %current_rank%. */
+        public String candidateSliderLabelFormat = "<white>%candidate_name%</white> <gray>(%candidate_party%)</gray> <gray> | Current: </gray>";
+        /** Text used when a candidate currently has no rank assigned. */
+        public String notRankedText = "Not ranked";
         public Config() {}
     }
 
@@ -85,6 +88,10 @@ public class PreferentialBallotMenu extends ChildMenuImp {
             return dialogBuilder.build();
         }
         Election election = optionalElection.get();
+        if (election.getSystem() != VotingSystem.PREFERENTIAL) {
+            // Safety: this menu is only meaningful for preferential systems.
+            return dialogBuilder.build();
+        }
         int min = Math.max(1, election.getMinimumVotes());
         int maxRank = Math.max(1, election.getCandidates().size());
 
@@ -99,64 +106,122 @@ public class PreferentialBallotMenu extends ChildMenuImp {
         dialogBuilder.afterAction(DialogBase.DialogAfterAction.CLOSE);
 
         dialogBuilder.addBody(DialogBody.plainMessage(Component.newline()
-                .append(miniMessage(config.minPrefsLabel, placeholders)).append(miniMessage(applyPlaceholders(config.valueGrayFormat, Map.of("%value%", String.valueOf(min))), null))
-                .appendNewline().append(miniMessage(config.instruction, placeholders))
+                .append(miniMessage(config.minPrefsLabel, placeholders))
+                .append(miniMessage(applyPlaceholders(config.valueGrayFormat, Map.of("%value%", String.valueOf(min))), null))
+                .appendNewline()
+                .append(miniMessage(config.instruction, placeholders))
         ));
 
+        BallotSessions.Session session = BallotSessions.get(getPlayer().getUniqueId(), electionId, election.getSystem());
+        session.setSystem(election.getSystem());
+
         List<Candidate> candidates = election.getCandidates();
-        Map<String, Integer> selectKeyToId = new LinkedHashMap<>();
-        Map<String, Integer> rankKeyToId = new LinkedHashMap<>();
+        Map<String, Integer> sliderKeyToCandidateId = new LinkedHashMap<>();
+
         for (Candidate candidate : candidates) {
-            String selectKey = selKey(candidate.getId());
-            String rankKey = rankKey(candidate.getId());
-            selectKeyToId.put(selectKey, candidate.getId());
-            rankKeyToId.put(rankKey, candidate.getId());
-            HeadUtil.updateHeadItemBytesAsync(electionsService, electionId, candidate.getId(), candidate.getName());
-            dialogBuilder.addBody(DialogBody.item(HeadUtil.headFromBytesOrName(candidate.getId(), candidate.getName())).showTooltip(true).build());
+            int candidateId = candidate.getId();
+            String sliderKey = "RANK_" + candidateId;
+            sliderKeyToCandidateId.put(sliderKey, candidateId);
+
             String party = candidate.getParty();
             if (party == null || party.isBlank()) party = config.partyUnknown;
-            Map<String,String> cph = Map.of("%candidate_name%", candidate.getName(), "%candidate_party%", party, "%max%", String.valueOf(maxRank));
-            dialogBuilder.addInput(DialogInput.bool(selectKey, miniMessage(applyPlaceholders(config.candidateNameLabelFormat, cph), null)).initial(false).build());
-            dialogBuilder.addInput(DialogInput.text(rankKey, miniMessage(applyPlaceholders(config.rankForFormat, cph), null)).labelVisible(true).build());
+
+            Integer currentRank = session.getRank(candidateId);
+            String currentRankLabel = currentRank == null ? config.notRankedText : String.valueOf(currentRank);
+
+            // Build placeholders
+            Map<String, String> cph = Map.of(
+                    "%candidate_name%", candidate.getName(),
+                    "%candidate_party%", party,
+                    "%current_rank%", currentRankLabel
+            );
+
+            // Build FULL label as Component
+            Component sliderLabel = miniMessage(applyPlaceholders(config.candidateSliderLabelFormat, cph));
+
+            // Build dialog slider
+            NumberRangeDialogInput range = DialogInput
+                    .numberRange(sliderKey, sliderLabel, 0, maxRank)
+                    //.labelFormat("%s")
+                    .step(1f)
+                    .initial(currentRank == null ? 0f : currentRank.floatValue())
+                    .build();
+
+            dialogBuilder.addInput(range);
         }
 
         dialogBuilder.buttonWithPlayer(miniMessage(config.submitBtn), null, (playerActor, response) -> {
-            List<Map.Entry<Integer, Integer>> selections = new ArrayList<>();
-            Set<Integer> seenRanks = new HashSet<>();
-            for (Map.Entry<String, Integer> entry : selectKeyToId.entrySet()) {
-                Boolean selected = response.getBoolean(entry.getKey());
-                if (selected != null && selected) {
-                    String rk = rankKey(entry.getValue());
-                    String text = response.getText(rk);
-                    if (text == null || text.isBlank()) { playerActor.sendMessage(miniMessage(config.missingRank)); new PreferentialBallotMenu(playerActor, getParentMenu(), electionsService, electionId).open(); return; }
-                    int rank;
-                    try { rank = Integer.parseInt(text.trim()); } catch (NumberFormatException ex) { playerActor.sendMessage(miniMessage(applyPlaceholders(config.invalidRank, Map.of("%rank%", text)), null)); new PreferentialBallotMenu(playerActor, getParentMenu(), electionsService, electionId).open(); return; }
-                    if (rank < 1 || rank > maxRank) { playerActor.sendMessage(miniMessage(applyPlaceholders(config.invalidRank, Map.of("%rank%", String.valueOf(rank))), null)); new PreferentialBallotMenu(playerActor, getParentMenu(), electionsService, electionId).open(); return; }
-                    if (!seenRanks.add(rank)) { playerActor.sendMessage(miniMessage(applyPlaceholders(config.duplicateRank, Map.of("%rank%", String.valueOf(rank))), null)); new PreferentialBallotMenu(playerActor, getParentMenu(), electionsService, electionId).open(); return; }
-                    selections.add(Map.entry(entry.getValue(), rank));
+            Map<Integer, Integer> ranksByCandidate = new HashMap<>();
+            for (Map.Entry<String, Integer> entry : sliderKeyToCandidateId.entrySet()) {
+                String key = entry.getKey();
+                Float v = response.getFloat(key);
+                int rank = (v == null ? 0 : Math.round(v));
+                if (rank >= 1 && rank <= maxRank) {
+                    ranksByCandidate.put(entry.getValue(), rank);
                 }
             }
-            if (selections.size() < min) { playerActor.sendMessage(miniMessage(applyPlaceholders(config.selectAtLeast, Map.of("%min%", String.valueOf(min))), null)); new PreferentialBallotMenu(playerActor, getParentMenu(), electionsService, electionId).open(); return; }
-            selections.sort(Comparator.comparingInt(Map.Entry::getValue));
-            List<Integer> ordered = new ArrayList<>();
-            for (Map.Entry<Integer, Integer> pair : selections) ordered.add(pair.getKey());
+
+            // Persist back into the session
+            session.clearAll();
+            for (Map.Entry<Integer, Integer> e : ranksByCandidate.entrySet()) {
+                session.setRank(e.getKey(), e.getValue());
+            }
+
+            if (ranksByCandidate.size() < min) {
+                String base = BallotError.INSUFFICIENT_PREFERENCES.errorString();
+                String detail = applyPlaceholders(config.selectAtLeast, Map.of("%min%", String.valueOf(min)));
+                new ErrorMenu(playerActor, getParentMenu(),
+                        "error_pref_min_prefs_" + electionId + "_" + playerActor.getUniqueId(),
+                        java.util.List.of(base, detail)).open();
+                return;
+            }
+
+            int maximum = Math.max(1, election.getCandidates().size());
+            Set<Integer> seen = new HashSet<>();
+            for (Integer r : ranksByCandidate.values()) {
+                if (r == null || r < 1 || r > maximum) {
+                    String base = BallotError.INVALID_RANK.errorString();
+                    String detail = applyPlaceholders(config.invalidRank, Map.of("%rank%", String.valueOf(r)));
+                    new ErrorMenu(playerActor, getParentMenu(),
+                            "error_pref_invalid_rank_bounds_" + electionId + "_" + playerActor.getUniqueId(),
+                            List.of(base, detail)).open();
+                    return;
+                }
+                if (!seen.add(r)) {
+                    String base = BallotError.DUPLICATE_RANKING.errorString();
+                    String detail = applyPlaceholders(config.duplicateRank, Map.of("%rank%", String.valueOf(r)));
+                    new ErrorMenu(playerActor, getParentMenu(),
+                            "error_pref_duplicate_rank_" + electionId + "_" + playerActor.getUniqueId(),
+                            List.of(base, detail)).open();
+                    return;
+                }
+            }
+
+            List<Map.Entry<Integer, Integer>> orderedEntries = new ArrayList<>(ranksByCandidate.entrySet());
+            orderedEntries.sort(Comparator.comparingInt(Map.Entry::getValue));
+            List<Integer> orderedCandidateIds = new ArrayList<>();
+            for (Map.Entry<Integer, Integer> entry : orderedEntries) orderedCandidateIds.add(entry.getKey());
+
             new LoadingMenu(playerActor, getParentMenu(), miniMessage(config.loadingTitle, placeholders), miniMessage(config.loadingMessage, placeholders)).open();
             new BukkitRunnable() {
                 @Override
                 public void run() {
                     int voterId = electionsService.registerVoterAsync(electionId, playerActor.getName()).join().getId();
-                    boolean success = electionsService.submitPreferentialBallotAsync(electionId, voterId, ordered).join();
+                    boolean ok = electionsService.submitPreferentialBallotAsync(electionId, voterId, orderedCandidateIds).join();
                     new BukkitRunnable() {
                         @Override
                         public void run() {
-                            // Close loading dialog after async completes
                             playerActor.closeDialog();
-                            if (!success) {
-                                playerActor.sendMessage(miniMessage(config.submissionFailed));
-                                new PreferentialBallotMenu(playerActor, getParentMenu(), electionsService, electionId).open();
+                            if (!ok) {
+                                String base = BallotError.SUBMISSION_FAILED.errorString();
+                                String detail = config.submissionFailed;
+                                new ErrorMenu(playerActor, getParentMenu(),
+                                        "error_pref_submit_" + electionId + "_" + playerActor.getUniqueId(),
+                                        java.util.List.of(base, detail)).open();
                             } else {
                                 playerActor.sendMessage(miniMessage(config.submitted));
                                 SoundHelper.play(playerActor, config.successSound);
+                                BallotSessions.clear(playerActor.getUniqueId(), electionId);
                             }
                         }
                     }.runTask(Elections.getInstance());
@@ -164,7 +229,10 @@ public class PreferentialBallotMenu extends ChildMenuImp {
             }.runTaskAsynchronously(Elections.getInstance());
         });
 
-        dialogBuilder.button(miniMessage(config.clearBtn), context -> new PreferentialBallotMenu(context.player(), getParentMenu(), electionsService, electionId).open());
+        dialogBuilder.button(miniMessage(config.clearBtn), context -> {
+            session.clearAll();
+            new PreferentialBallotMenu(context.player(), getParentMenu(), electionsService, electionId).open();
+        });
         dialogBuilder.button(miniMessage(config.backBtn), context -> getParentMenu().open());
 
         return dialogBuilder.build();

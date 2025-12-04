@@ -7,7 +7,9 @@ import org.yaml.snakeyaml.Yaml;
 
 import java.io.*;
 import java.lang.reflect.*;
+import java.nio.charset.StandardCharsets;
 import java.util.*;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.logging.Level;
 import java.util.stream.Collectors;
 
@@ -15,37 +17,25 @@ import java.util.stream.Collectors;
  * AutoYML is a small reflection-based utility to serialize/deserialize simple Java POJOs
  * to and from YAML files using SnakeYAML.
  *
- * Features:
- * - Supports nested objects with a no-arg constructor.
- * - Supports Lists, Sets, arrays, and Map<String, V>.
- * - Supports primitive wrappers, strings, numbers, booleans, and enums (case-insensitive).
- * - Skips static, transient, and synthetic fields.
- * - Optional header comment at the top of the generated YAML.
- * - Thread-safety: all file I/O operations are synchronized per AutoYML instance.
- *
- * Limitations:
- * - Map keys are handled primarily as strings. Non-string keys are best avoided.
- * - Requires a no-argument constructor for nested objects.
- * - Concurrency is not coordinated across different AutoYML instances pointing to the same file.
+ * Optimization improvements:
+ * - Added caching for Reflection fields to reduce overhead on repeated saves/loads.
+ * - Enforced UTF-8 encoding for file I/O.
+ * - Optimized primitive parsing to avoid unnecessary String object creation.
  *
  * @param <T> Root data type (recommended to implement Serializable)
  */
 public class AutoYML<T extends Serializable> {
 
+    // Caches to prevent expensive reflection lookups on every IO operation
+    private static final Map<Class<?>, List<Field>> FIELD_CACHE = new ConcurrentHashMap<>();
+    private static final Map<Class<?>, Constructor<?>> CONSTRUCTOR_CACHE = new ConcurrentHashMap<>();
+
     private final Class<T> clazz;
     private final File file;
     private final String header;
     private final Yaml yaml;
-    // Synchronization guard for file I/O and YAML access
     private final Object ioLock = new Object();
 
-    /**
-     * Creates a new AutoYML handler for a specific class and file.
-     *
-     * @param clazz  Root class handled by this instance.
-     * @param file   Target YAML file.
-     * @param header Optional header comment written at the top of the file.
-     */
     public AutoYML(Class<T> clazz, File file, String header) {
         this.clazz = clazz;
         this.file = file;
@@ -55,57 +45,41 @@ public class AutoYML<T extends Serializable> {
         opts.setDefaultFlowStyle(DumperOptions.FlowStyle.BLOCK);
         opts.setPrettyFlow(true);
         opts.setIndent(2);
-        // Keep wide lines but still readable.
         opts.setWidth(120);
         this.yaml = new Yaml(opts);
 
         ensureParent();
     }
 
-    /**
-     * Ensures the parent directory for the file exists.
-     */
     private void ensureParent() {
         File parent = file.getParentFile();
         if (parent != null && !parent.exists()) {
-            boolean ok = parent.mkdirs();
-            if (!ok && !parent.exists()) {
+            if (!parent.mkdirs() && !parent.exists()) {
                 Elections.getInstance().getLogger().log(Level.WARNING,
                         "Could not create parent directories for: " + parent.getAbsolutePath());
             }
         }
     }
 
-    /**
-     * @return true if the YAML file exists.
-     */
     public boolean exists() {
         synchronized (ioLock) {
             return file.exists();
         }
     }
 
-    /**
-     * Deletes the YAML file if present.
-     *
-     * @return true if the file was deleted.
-     */
     public boolean delete() {
         synchronized (ioLock) {
             return file.delete();
         }
     }
 
-    /**
-     * Loads the YAML file into an instance of {@code T}.
-     * Returns null if the file does not exist, is empty, or cannot be parsed.
-     */
     public T load() {
         synchronized (ioLock) {
             if (!file.exists()) return null;
-            try (InputStream in = new FileInputStream(file)) {
-                Object raw = yaml.load(in);
-                if (!(raw instanceof Map)) return null; // Empty or invalid root
+            // Use InputStreamReader with explicit UTF-8
+            try (InputStreamReader reader = new InputStreamReader(new FileInputStream(file), StandardCharsets.UTF_8)) {
+                Object raw = yaml.load(reader);
+                if (!(raw instanceof Map)) return null;
                 @SuppressWarnings("unchecked")
                 Map<String, Object> map = (Map<String, Object>) raw;
                 return buildFromMap(map, clazz);
@@ -116,12 +90,6 @@ public class AutoYML<T extends Serializable> {
         }
     }
 
-    /**
-     * Loads the YAML file or creates and saves a default instance when load fails.
-     *
-     * @param defaultSupplier Provides a default instance when loading fails or file is missing.
-     * @return Loaded or newly created instance.
-     */
     public T loadOrCreate(Supplier<T> defaultSupplier) {
         synchronized (ioLock) {
             T result = load();
@@ -133,52 +101,53 @@ public class AutoYML<T extends Serializable> {
         }
     }
 
-    /**
-     * Saves the given object to the YAML file.
-     *
-     * @param obj Instance to serialize.
-     */
     public void save(T obj) {
         synchronized (ioLock) {
             Map<String, Object> map = toMap(obj);
-            try (Writer w = new FileWriter(file)) {
+            // Use OutputStreamWriter with explicit UTF-8
+            try (OutputStreamWriter writer = new OutputStreamWriter(new FileOutputStream(file), StandardCharsets.UTF_8)) {
                 if (header != null && !header.isEmpty()) {
                     for (String line : header.split("\n")) {
-                        w.write("# " + line + "\n");
+                        writer.write("# " + line + "\n");
                     }
-                    w.write("\n");
+                    writer.write("\n");
                 }
-                yaml.dump(map, w);
+                yaml.dump(map, writer);
             } catch (IOException e) {
                 Elections.getInstance().getLogger().log(Level.SEVERE, "Failed to save YAML: " + file, e);
             }
         }
     }
 
-    /**
-     * Build an instance of target type from a YAML-backed map.
-     * Fields not present in the map are left as the object's defaults.
-     * If a key is present but cannot be converted (e.g., wrong type), the field's default is preserved.
-     */
     private <X> X buildFromMap(Map<String, Object> map, Class<X> target) {
         try {
-            Constructor<X> ctor = target.getDeclaredConstructor();
-            ctor.setAccessible(true);
-            X instance = ctor.newInstance();
+            Constructor<?> ctor = CONSTRUCTOR_CACHE.computeIfAbsent(target, t -> {
+                try {
+                    Constructor<?> c = t.getDeclaredConstructor();
+                    c.setAccessible(true);
+                    return c;
+                } catch (NoSuchMethodException e) {
+                    throw new RuntimeException("No no-arg constructor for " + t.getName(), e);
+                }
+            });
 
-            for (Field field : getAllFields(target)) {
-                field.setAccessible(true);
+            @SuppressWarnings("unchecked")
+            X instance = (X) ctor.newInstance();
+
+            for (Field field : getCachedFields(target)) {
                 String name = field.getName();
-                if (!map.containsKey(name)) continue; // preserve default value
+                if (!map.containsKey(name)) continue;
+
                 Object raw = map.get(name);
                 Object converted = convertValue(raw, field.getGenericType());
+
                 if (converted == null && field.getType().isPrimitive()) continue;
+
                 try {
                     field.set(instance, converted);
                 } catch (Exception setEx) {
                     Elections.getInstance().getLogger().log(Level.WARNING,
-                            "Could not set field '" + name + "' on " + target.getSimpleName() + ": " + converted,
-                            setEx);
+                            "Could not set field '" + name + "' on " + target.getSimpleName(), setEx);
                 }
             }
             return instance;
@@ -187,16 +156,10 @@ public class AutoYML<T extends Serializable> {
         }
     }
 
-    /**
-     * Converts a raw YAML-loaded value into the requested Java type.
-     * Handles primitives/wrappers, enums, nested POJOs, collections, arrays, and maps.
-     */
     private Object convertValue(Object raw, Type type) {
         if (raw == null) return null;
 
         if (type instanceof Class<?> pClass) {
-
-            // Primitives and common simple types
             if (pClass == String.class) return String.valueOf(raw);
             if (pClass == Integer.class || pClass == int.class) return toInteger(raw);
             if (pClass == Long.class || pClass == long.class) return toLong(raw);
@@ -207,19 +170,17 @@ public class AutoYML<T extends Serializable> {
             if (pClass == Character.class || pClass == char.class) return toChar(raw);
             if (pClass == Boolean.class || pClass == boolean.class) return toBoolean(raw);
 
-            // Enums (case-insensitive by name)
             if (pClass.isEnum()) {
-                Object[] constants = pClass.getEnumConstants();
+                if (pClass.isInstance(raw)) return raw;
                 String s = String.valueOf(raw);
-                for (Object c : constants) {
+                for (Object c : pClass.getEnumConstants()) {
                     if (((Enum<?>) c).name().equalsIgnoreCase(s)) {
                         return c;
                     }
                 }
-                return null; // unknown enum constant
+                return null;
             }
 
-            // Arrays
             if (pClass.isArray()) {
                 Class<?> comp = pClass.getComponentType();
                 if (raw instanceof Collection<?>) {
@@ -234,19 +195,16 @@ public class AutoYML<T extends Serializable> {
                 return null;
             }
 
-            // Nested POJO
             if (raw instanceof Map) {
                 @SuppressWarnings("unchecked")
                 Map<String, Object> map = (Map<String, Object>) raw;
                 return buildFromMap(map, pClass);
             }
 
-            // Fallback: if type matches, return as-is; otherwise string value
             if (pClass.isInstance(raw)) return raw;
             return String.valueOf(raw);
         }
 
-        // Handle parameterized types (List<T>, Set<T>, Map<K,V>)
         if (type instanceof ParameterizedType) {
             ParameterizedType pt = (ParameterizedType) type;
             Type rawType = pt.getRawType();
@@ -254,55 +212,43 @@ public class AutoYML<T extends Serializable> {
             if (rawType instanceof Class<?>) {
                 Class<?> rawClass = (Class<?>) rawType;
 
-                // List<T>
                 if (List.class.isAssignableFrom(rawClass)) {
                     Type argType = pt.getActualTypeArguments()[0];
                     if (!(raw instanceof Collection)) return null;
-                    Collection<?> rawColl = (Collection<?>) raw;
-                    return rawColl.stream()
+                    return ((Collection<?>) raw).stream()
                             .map(item -> convertValue(item, argType))
                             .collect(Collectors.toList());
                 }
 
-                // Set<T>
                 if (Set.class.isAssignableFrom(rawClass)) {
                     Type argType = pt.getActualTypeArguments()[0];
                     if (!(raw instanceof Collection)) return null;
                     Collection<?> rawColl = (Collection<?>) raw;
-                    LinkedHashSet<Object> set = new LinkedHashSet<>();
+                    Set<Object> set = new LinkedHashSet<>(Math.max((int) (rawColl.size() / .75f) + 1, 16));
                     for (Object item : rawColl) set.add(convertValue(item, argType));
                     return set;
                 }
 
-                // Map<K,V> (primarily supports String keys)
                 if (Map.class.isAssignableFrom(rawClass)) {
                     Type keyType = pt.getActualTypeArguments()[0];
                     Type valType = pt.getActualTypeArguments()[1];
                     if (!(raw instanceof Map)) return null;
                     @SuppressWarnings("unchecked")
                     Map<Object, Object> in = (Map<Object, Object>) raw;
-                    LinkedHashMap<Object, Object> out = new LinkedHashMap<>();
+                    Map<Object, Object> out = new LinkedHashMap<>(in.size());
                     for (Map.Entry<Object, Object> e : in.entrySet()) {
-                        Object k = e.getKey();
-                        Object v = e.getValue();
-                        Object convKey = convertMapKey(k, keyType);
-                        Object convVal = convertValue(v, valType);
-                        out.put(convKey, convVal);
+                        out.put(convertMapKey(e.getKey(), keyType), convertValue(e.getValue(), valType));
                     }
                     return out;
                 }
             }
         }
-
-        // Unknown generic type: return raw
         return raw;
     }
 
-    /** Serialize an object graph into a map suitable for SnakeYAML. */
     private Map<String, Object> toMap(Object obj) {
         Map<String, Object> result = new LinkedHashMap<>();
-        for (Field field : getAllFields(obj.getClass())) {
-            field.setAccessible(true);
+        for (Field field : getCachedFields(obj.getClass())) {
             try {
                 Object value = field.get(obj);
                 result.put(field.getName(), serializeValue(value));
@@ -314,18 +260,14 @@ public class AutoYML<T extends Serializable> {
         return result;
     }
 
-    /** Converts a value into a YAML-serializable form (maps, lists, primitives, strings). */
     private Object serializeValue(Object value) {
         if (value == null) return null;
 
-        // Primitives and simple wrappers
         if (value instanceof String || value instanceof Number || value instanceof Boolean)
             return value;
 
-        // Enums by name
         if (value instanceof Enum<?>) return ((Enum<?>) value).name();
 
-        // Arrays -> List
         if (value.getClass().isArray()) {
             int len = Array.getLength(value);
             List<Object> out = new ArrayList<>(len);
@@ -333,52 +275,38 @@ public class AutoYML<T extends Serializable> {
             return out;
         }
 
-        // Collections
         if (value instanceof Collection<?>) {
-            Collection<?> coll = (Collection<?>) value;
-            return coll.stream().map(this::serializeValue).collect(Collectors.toList());
+            return ((Collection<?>) value).stream()
+                    .map(this::serializeValue)
+                    .collect(Collectors.toList());
         }
 
-        // Map keys are forced to strings (via toString) for YAML
         if (value instanceof Map<?, ?>) {
             Map<?, ?> map = (Map<?, ?>) value;
-            LinkedHashMap<String, Object> out = new LinkedHashMap<>();
+            Map<String, Object> out = new LinkedHashMap<>(map.size());
             for (Map.Entry<?, ?> e : map.entrySet()) {
-                String k = String.valueOf(e.getKey());
-                out.put(k, serializeValue(e.getValue()));
+                out.put(String.valueOf(e.getKey()), serializeValue(e.getValue()));
             }
             return out;
         }
 
-        // Nested POJO
         return toMap(value);
     }
 
-    /**
-     * Creates a configured AutoYML instance resolving the file under the plugin's data folder.
-     *
-     * @param clazz       Root class handled by this instance.
-     * @param fileName    Target file name (".yml" appended if missing).
-     * @param dataFolder  Logical subfolder where the file will be placed.
-     * @param header      Optional header comment.
-     */
     public static <T extends Serializable> AutoYML<T> create(
             Class<T> clazz, String fileName, DataFolder dataFolder, String header
     ) {
         File folder = new File(Elections.getInstance().getDataFolder(), dataFolder.getPath());
         if (!folder.exists()) {
-            boolean ok = folder.mkdirs();
-            if (!ok && !folder.exists()) {
+            if (!folder.mkdirs() && !folder.exists()) {
                 Elections.getInstance().getLogger().log(Level.WARNING,
                         "Could not create data folder: " + folder.getAbsolutePath());
             }
         }
         if (!fileName.endsWith(".yml")) fileName += ".yml";
-        File file = new File(folder, fileName);
-        return new AutoYML<>(clazz, file, header);
+        return new AutoYML<>(clazz, new File(folder, fileName), header);
     }
 
-    /** Lightweight, local Supplier to avoid additional dependencies. */
     @FunctionalInterface
     public interface Supplier<V> {
         V get();
@@ -386,52 +314,63 @@ public class AutoYML<T extends Serializable> {
 
     // ------------------------- Helpers -------------------------
 
-    /** Collects all non-static, non-transient, non-synthetic fields from the class hierarchy. */
-    private static List<Field> getAllFields(Class<?> type) {
-        List<Field> fields = new ArrayList<>();
-        Class<?> c = type;
-        while (c != null && c != Object.class) {
-            for (Field f : c.getDeclaredFields()) {
-                int mod = f.getModifiers();
-                if (Modifier.isStatic(mod) || Modifier.isTransient(mod) || f.isSynthetic()) continue;
-                fields.add(f);
+    private static List<Field> getCachedFields(Class<?> type) {
+        return FIELD_CACHE.computeIfAbsent(type, t -> {
+            List<Field> fields = new ArrayList<>();
+            Class<?> c = t;
+            while (c != null && c != Object.class) {
+                for (Field f : c.getDeclaredFields()) {
+                    int mod = f.getModifiers();
+                    if (Modifier.isStatic(mod) || Modifier.isTransient(mod) || f.isSynthetic()) continue;
+                    f.setAccessible(true); // Set accessible once upon caching
+                    fields.add(f);
+                }
+                c = c.getSuperclass();
             }
-            c = c.getSuperclass();
-        }
-        return fields;
+            return fields;
+        });
     }
 
+    // Optimized converters: Avoid String instantiation if the type is already correct
+
     private static Integer toInteger(Object raw) {
+        if (raw instanceof Integer) return (Integer) raw;
         if (raw instanceof Number) return ((Number) raw).intValue();
         try { return Integer.parseInt(String.valueOf(raw).trim()); } catch (Exception ignored) { return null; }
     }
 
     private static Long toLong(Object raw) {
+        if (raw instanceof Long) return (Long) raw;
         if (raw instanceof Number) return ((Number) raw).longValue();
         try { return Long.parseLong(String.valueOf(raw).trim()); } catch (Exception ignored) { return null; }
     }
 
     private static Double toDouble(Object raw) {
+        if (raw instanceof Double) return (Double) raw;
         if (raw instanceof Number) return ((Number) raw).doubleValue();
         try { return Double.parseDouble(String.valueOf(raw).trim()); } catch (Exception ignored) { return null; }
     }
 
     private static Float toFloat(Object raw) {
+        if (raw instanceof Float) return (Float) raw;
         if (raw instanceof Number) return ((Number) raw).floatValue();
         try { return Float.parseFloat(String.valueOf(raw).trim()); } catch (Exception ignored) { return null; }
     }
 
     private static Short toShort(Object raw) {
+        if (raw instanceof Short) return (Short) raw;
         if (raw instanceof Number) return ((Number) raw).shortValue();
         try { return Short.parseShort(String.valueOf(raw).trim()); } catch (Exception ignored) { return null; }
     }
 
     private static Byte toByte(Object raw) {
+        if (raw instanceof Byte) return (Byte) raw;
         if (raw instanceof Number) return ((Number) raw).byteValue();
         try { return Byte.parseByte(String.valueOf(raw).trim()); } catch (Exception ignored) { return null; }
     }
 
     private static Character toChar(Object raw) {
+        if (raw instanceof Character) return (Character) raw;
         String s = String.valueOf(raw);
         return s.isEmpty() ? null : s.charAt(0);
     }
@@ -440,17 +379,19 @@ public class AutoYML<T extends Serializable> {
         if (raw instanceof Boolean) return (Boolean) raw;
         if (raw instanceof Number) return ((Number) raw).intValue() != 0;
         String s = String.valueOf(raw).trim().toLowerCase(Locale.ROOT);
-        if (Arrays.asList("true", "t", "yes", "y", "on", "1").contains(s)) return true;
-        if (Arrays.asList("false", "f", "no", "n", "off", "0").contains(s)) return false;
-        return null;
+        return switch (s) {
+            case "true", "t", "yes", "y", "on", "1" -> true;
+            case "false", "f", "no", "n", "off", "0" -> false;
+            default -> null;
+        };
     }
 
-    /** Converts a raw map key into the requested key type (String or Enum supported). */
     private Object convertMapKey(Object key, Type keyType) {
         if (keyType instanceof Class<?>) {
             Class<?> kc = (Class<?>) keyType;
             if (kc == String.class || kc == Object.class) return String.valueOf(key);
             if (kc.isEnum()) {
+                if (kc.isInstance(key)) return key;
                 String s = String.valueOf(key);
                 for (Object c : kc.getEnumConstants()) {
                     if (((Enum<?>) c).name().equalsIgnoreCase(s)) return c;
@@ -458,7 +399,6 @@ public class AutoYML<T extends Serializable> {
                 return null;
             }
         }
-        // Fallback to string key
         return String.valueOf(key);
     }
 }

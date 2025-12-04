@@ -84,10 +84,17 @@ public class BallotIntroMenu extends ParentMenuImp {
         dialogBuilder.button(miniMessage(config.startBtn, placeholders), context -> {
             BallotMode mode = election.getBallotMode();
             if (mode == BallotMode.SIMPLE) {
-                if (election.getSystem() == VotingSystem.PREFERENTIAL) new SimplePreferentialBallotMenu(context.player(), this, electionsService, electionId).open();
-                else new SimpleBlockBallotMenu(context.player(), this, electionsService, electionId).open();
+                if (election.getSystem() == VotingSystem.PREFERENTIAL) {
+                    new SimplePreferentialBallotMenu(context.player(), this, electionsService, electionId).open();
+                } else {
+                    new SimpleBlockBallotMenu(context.player(), this, electionsService, electionId).open();
+                }
             } else {
-                new CandidateListMenu(context.player(), this, electionsService, electionId).open();
+                if (election.getSystem() == VotingSystem.PREFERENTIAL) {
+                    new PreferentialBallotMenu(context.player(), this, electionsService, electionId).open();
+                } else {
+                    new CandidateListMenu(context.player(), this, electionsService, electionId).open();
+                }
             }
         });
         dialogBuilder.button(miniMessage(config.closeBtn, placeholders), context -> {});

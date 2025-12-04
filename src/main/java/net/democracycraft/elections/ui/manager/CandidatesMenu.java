@@ -27,7 +27,7 @@ import java.util.Optional;
  */
 public class CandidatesMenu extends ChildMenuImp {
 
-    enum Keys { CANDIDATE_NAME }
+    enum Keys { CANDIDATE_NAME, CANDIDATE_PARTY }
 
     private final ElectionsService electionsService;
     private final int electionId;
@@ -54,6 +54,11 @@ public class CandidatesMenu extends ChildMenuImp {
         public String removedMsg = "<yellow>Candidate removed.</yellow>";
         public String removeFailedMsg = "<red><bold>Could not remove candidate.</bold></red>";
         public String nameLabel = "<aqua>Candidate name</aqua>";
+        /**
+         * Label for the optional candidate party input. This field may be empty when adding a
+         * candidate; the service will accept null/empty party values.
+         */
+        public String partyLabel = "<aqua>Candidate party (optional)</aqua>";
         public String addBtn = "<green><bold>Add</bold></green>";
         public String nameEmptyMsg = "<red><bold>Name cannot be empty.</bold></red>";
         public String addFailedMsg = "<red><bold>Could not add candidate.</bold></red>";
@@ -105,20 +110,25 @@ public class CandidatesMenu extends ChildMenuImp {
             }
         }
 
+        // Add name input and optional party input so the candidate party can be set at creation time.
         dialogBuilder.addInput(DialogInput.text(Keys.CANDIDATE_NAME.name(), miniMessage(config.nameLabel, null)).labelVisible(true).build());
+        dialogBuilder.addInput(DialogInput.text(Keys.CANDIDATE_PARTY.name(), miniMessage(config.partyLabel, null)).labelVisible(true).build());
         dialogBuilder.buttonWithPlayer(miniMessage(config.addBtn, null), null, (playerActor, response) -> {
             String name = response.getText(Keys.CANDIDATE_NAME.name());
+            String party = response.getText(Keys.CANDIDATE_PARTY.name());
             if (name == null || name.isBlank()) {
                 playerActor.sendMessage(miniMessage(config.nameEmptyMsg, null));
                 new CandidatesMenu(playerActor, getParentMenu(), electionsService, electionId).open();
                 return;
             }
+            if (party != null && party.isBlank()) party = null;
+            final String partyFinal = party;
             // Offload add to async thread
             new LoadingMenu(playerActor, getParentMenu(), miniMessage(config.loadingTitle, null), miniMessage(config.loadingMessage, null)).open();
             new BukkitRunnable() {
                 @Override
                 public void run() {
-                    Optional<Candidate> added = electionsService.addCandidate(electionId, name, playerActor.getName());
+                    Optional<Candidate> added = electionsService.addCandidate(electionId, name, partyFinal, playerActor.getName());
                     new BukkitRunnable() {
                         @Override
                         public void run() {

@@ -5,6 +5,7 @@ import io.papermc.paper.registry.data.dialog.DialogBase;
 import io.papermc.paper.registry.data.dialog.body.DialogBody;
 import io.papermc.paper.registry.data.dialog.input.DialogInput;
 import net.democracycraft.elections.Elections;
+import net.democracycraft.elections.api.model.BallotError;
 import net.democracycraft.elections.api.model.Candidate;
 import net.democracycraft.elections.api.model.Election;
 import net.democracycraft.elections.api.service.ElectionsService;
@@ -12,6 +13,7 @@ import net.democracycraft.elections.ui.ChildMenuImp;
 import net.democracycraft.elections.api.ui.ParentMenu;
 import net.democracycraft.elections.util.HeadUtil;
 import net.democracycraft.elections.api.ui.AutoDialog;
+import net.democracycraft.elections.ui.common.ErrorMenu;
 import net.democracycraft.elections.ui.common.LoadingMenu;
 import net.democracycraft.elections.util.sound.SoundHelper;
 import net.democracycraft.elections.util.sound.SoundSpec;
@@ -122,8 +124,11 @@ public class BlockBallotMenu extends ChildMenuImp {
                 if (selected != null && selected) picks.add(entry.getValue());
             }
             if (picks.size() != min) {
-                playerActor.sendMessage(miniMessage(applyPlaceholders(config.mustSelectExactly, Map.of("%min%", String.valueOf(min))), null));
-                new BlockBallotMenu(playerActor, getParentMenu(), electionsService, electionId).open();
+                String base = BallotError.MUST_SELECT_EXACTLY_MIN.errorString();
+                String detail = applyPlaceholders(config.mustSelectExactly, Map.of("%min%", String.valueOf(min)));
+                new ErrorMenu(playerActor, getParentMenu(),
+                        "error_block_min_" + electionId + "_" + playerActor.getUniqueId(),
+                        List.of(base, detail)).open();
                 return;
             }
             new LoadingMenu(playerActor, getParentMenu(), miniMessage(config.loadingTitle, placeholders), miniMessage(config.loadingMessage, placeholders)).open();
@@ -139,8 +144,11 @@ public class BlockBallotMenu extends ChildMenuImp {
                             // Close loading dialog after async completes
                             playerActor.closeDialog();
                             if (!success) {
-                                playerActor.sendMessage(miniMessage(config.submissionFailed));
-                                new BlockBallotMenu(playerActor, getParentMenu(), electionsService, electionId).open();
+                                String base = BallotError.SUBMISSION_FAILED.errorString();
+                                String detail = config.submissionFailed;
+                                new ErrorMenu(playerActor, getParentMenu(),
+                                        "error_block_submit_" + electionId + "_" + playerActor.getUniqueId(),
+                                        List.of(base, detail)).open();
                             } else {
                                 playerActor.sendMessage(miniMessage(config.submitted));
                                 SoundHelper.play(playerActor, config.successSound);

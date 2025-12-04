@@ -4,6 +4,7 @@ import io.papermc.paper.dialog.Dialog;
 import io.papermc.paper.registry.data.dialog.DialogBase;
 import io.papermc.paper.registry.data.dialog.body.DialogBody;
 import net.democracycraft.elections.Elections;
+import net.democracycraft.elections.api.model.BallotError;
 import net.democracycraft.elections.api.model.Candidate;
 import net.democracycraft.elections.api.model.Election;
 import net.democracycraft.elections.api.service.ElectionsService;
@@ -11,6 +12,7 @@ import net.democracycraft.elections.api.ui.ParentMenu;
 import net.democracycraft.elections.data.VotingSystem;
 import net.democracycraft.elections.ui.ChildMenuImp;
 import net.democracycraft.elections.api.ui.AutoDialog;
+import net.democracycraft.elections.ui.common.ErrorMenu;
 import net.democracycraft.elections.ui.common.LoadingMenu;
 import net.democracycraft.elections.util.sound.SoundHelper;
 import net.democracycraft.elections.util.sound.SoundSpec;
@@ -170,7 +172,14 @@ public class CandidateListMenu extends ChildMenuImp {
             if (system == VotingSystem.BLOCK) {
                 List<Integer> pickedCandidates = session.getSelected();
                 int minimumRequired = Math.max(1, election.getMinimumVotes());
-                if (pickedCandidates.size() != minimumRequired) { playerActor.sendMessage(miniMessage(applyPlaceholders(config.mustSelectExactly, Map.of("%min%", String.valueOf(minimumRequired))), null)); new CandidateListMenu(playerActor, getParentMenu(), electionsService, electionId, page).open(); return; }
+                if (pickedCandidates.size() != minimumRequired) {
+                    String base = BallotError.MUST_SELECT_EXACTLY_MIN.errorString();
+                    String detail = applyPlaceholders(config.mustSelectExactly, Map.of("%min%", String.valueOf(minimumRequired)));
+                    new ErrorMenu(playerActor, getParentMenu(),
+                            "error_list_block_min_" + electionId + "_" + playerActor.getUniqueId(),
+                            List.of(base, detail)).open();
+                    return;
+                }
                 new LoadingMenu(playerActor, getParentMenu(), miniMessage(config.loadingTitle, placeholders), miniMessage(config.loadingMessage, placeholders)).open();
                 new BukkitRunnable() {
                     @Override
@@ -180,24 +189,62 @@ public class CandidateListMenu extends ChildMenuImp {
                         new BukkitRunnable() {
                             @Override
                             public void run() {
-                                if (!submissionOk) { playerActor.sendMessage(miniMessage(config.submissionFailed)); new CandidateListMenu(playerActor, getParentMenu(), electionsService, electionId, page).open(); }
-                                else { playerActor.sendMessage(miniMessage(config.submitted)); SoundHelper.play(playerActor, config.successSound); BallotSessions.clear(playerActor.getUniqueId(), electionId); }
+                                playerActor.closeDialog();
+                                if (!submissionOk) {
+                                    String base = BallotError.SUBMISSION_FAILED.errorString();
+                                    String detail = config.submissionFailed;
+                                    new ErrorMenu(playerActor, getParentMenu(),
+                                            "error_list_block_submit_" + electionId + "_" + playerActor.getUniqueId(),
+                                            List.of(base, detail)).open();
+                                } else {
+                                    playerActor.sendMessage(miniMessage(config.submitted));
+                                    SoundHelper.play(playerActor, config.successSound);
+                                    BallotSessions.clear(playerActor.getUniqueId(), electionId);
+                                }
                             }
                         }.runTask(Elections.getInstance());
                     }
                 }.runTaskAsynchronously(Elections.getInstance());
             } else {
                 Map<Integer,Integer> ranksByCandidate = session.getAllRanks();
-                if (ranksByCandidate.isEmpty()) { playerActor.sendMessage(miniMessage(config.noPrefs)); new CandidateListMenu(playerActor, getParentMenu(), electionsService, electionId, page).open(); return; }
+                if (ranksByCandidate.isEmpty()) {
+                    String base = BallotError.INSUFFICIENT_PREFERENCES.errorString();
+                    String detail = config.noPrefs;
+                    new ErrorMenu(playerActor, getParentMenu(),
+                            "error_list_pref_none_" + electionId + "_" + playerActor.getUniqueId(),
+                            List.of(base, detail)).open();
+                    return;
+                }
                 int minimumRequired = Math.max(1, election.getMinimumVotes());
                 int maxRank = Math.max(1, all.size());
                 Set<Integer> seenRanks = new HashSet<>();
                 for (Map.Entry<Integer,Integer> rankEntry : ranksByCandidate.entrySet()) {
                     Integer rankValue = rankEntry.getValue();
-                    if (rankValue == null || rankValue < 1 || rankValue > maxRank) { playerActor.sendMessage(miniMessage(applyPlaceholders(config.invalidRank, Map.of("%rank%", String.valueOf(rankValue))), null)); new CandidateListMenu(playerActor, getParentMenu(), electionsService, electionId, page).open(); return; }
-                    if (!seenRanks.add(rankValue)) { playerActor.sendMessage(miniMessage(applyPlaceholders(config.duplicateRank, Map.of("%rank%", String.valueOf(rankValue))), null)); new CandidateListMenu(playerActor, getParentMenu(), electionsService, electionId, page).open(); return; }
+                    if (rankValue == null || rankValue < 1 || rankValue > maxRank) {
+                        String base = BallotError.INVALID_RANK.errorString();
+                        String detail = applyPlaceholders(config.invalidRank, Map.of("%rank%", String.valueOf(rankValue)));
+                        new ErrorMenu(playerActor, getParentMenu(),
+                                "error_list_pref_invalid_" + electionId + "_" + playerActor.getUniqueId(),
+                                List.of(base, detail)).open();
+                        return;
+                    }
+                    if (!seenRanks.add(rankValue)) {
+                        String base = BallotError.DUPLICATE_RANKING.errorString();
+                        String detail = applyPlaceholders(config.duplicateRank, Map.of("%rank%", String.valueOf(rankValue)));
+                        new ErrorMenu(playerActor, getParentMenu(),
+                                "error_list_pref_duplicate_" + electionId + "_" + playerActor.getUniqueId(),
+                                List.of(base, detail)).open();
+                        return;
+                    }
                 }
-                if (ranksByCandidate.size() < minimumRequired) { playerActor.sendMessage(miniMessage(applyPlaceholders(config.selectAtLeast, Map.of("%min%", String.valueOf(minimumRequired))), null)); new CandidateListMenu(playerActor, getParentMenu(), electionsService, electionId, page).open(); return; }
+                if (ranksByCandidate.size() < minimumRequired) {
+                    String base = BallotError.INSUFFICIENT_PREFERENCES.errorString();
+                    String detail = applyPlaceholders(config.selectAtLeast, Map.of("%min%", String.valueOf(minimumRequired)));
+                    new ErrorMenu(playerActor, getParentMenu(),
+                            "error_list_pref_min_" + electionId + "_" + playerActor.getUniqueId(),
+                            List.of(base, detail)).open();
+                    return;
+                }
                 List<Map.Entry<Integer,Integer>> entries = new ArrayList<>(ranksByCandidate.entrySet());
                 entries.sort(java.util.Comparator.comparingInt(Map.Entry::getValue));
                 List<Integer> orderedCandidateIds = new ArrayList<>();
@@ -211,8 +258,18 @@ public class CandidateListMenu extends ChildMenuImp {
                         new BukkitRunnable() {
                             @Override
                             public void run() {
-                                if (!submissionOk) { playerActor.sendMessage(miniMessage(config.submissionFailed)); new CandidateListMenu(playerActor, getParentMenu(), electionsService, electionId, page).open(); }
-                                else { playerActor.sendMessage(miniMessage(config.submitted)); SoundHelper.play(playerActor, config.successSound); BallotSessions.clear(playerActor.getUniqueId(), electionId); }
+                                playerActor.closeDialog();
+                                if (!submissionOk) {
+                                    String base = BallotError.SUBMISSION_FAILED.errorString();
+                                    String detail = config.submissionFailed;
+                                    new ErrorMenu(playerActor, getParentMenu(),
+                                            "error_list_pref_submit_" + electionId + "_" + playerActor.getUniqueId(),
+                                            List.of(base, detail)).open();
+                                } else {
+                                    playerActor.sendMessage(miniMessage(config.submitted));
+                                    SoundHelper.play(playerActor, config.successSound);
+                                    BallotSessions.clear(playerActor.getUniqueId(), electionId);
+                                }
                             }
                         }.runTask(Elections.getInstance());
                     }

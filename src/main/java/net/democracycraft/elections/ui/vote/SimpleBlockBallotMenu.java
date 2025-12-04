@@ -7,12 +7,14 @@ import io.papermc.paper.registry.data.dialog.body.DialogBody;
 import io.papermc.paper.registry.data.dialog.input.DialogInput;
 import io.papermc.paper.registry.data.dialog.input.SingleOptionDialogInput;
 import net.democracycraft.elections.Elections;
+import net.democracycraft.elections.api.model.BallotError;
 import net.democracycraft.elections.api.model.Candidate;
 import net.democracycraft.elections.api.model.Election;
 import net.democracycraft.elections.api.service.ElectionsService;
 import net.democracycraft.elections.api.ui.ParentMenu;
 import net.democracycraft.elections.ui.ChildMenuImp;
 import net.democracycraft.elections.api.ui.AutoDialog;
+import net.democracycraft.elections.ui.common.ErrorMenu;
 import net.democracycraft.elections.ui.common.LoadingMenu;
 import net.democracycraft.elections.util.sound.SoundHelper;
 import net.democracycraft.elections.util.sound.SoundSpec;
@@ -132,10 +134,20 @@ public class SimpleBlockBallotMenu extends ChildMenuImp {
                 String key = "SEL_" + c.getId();
                 String sel = response.getText(key);
                 int idx;
-                try { idx = sel == null ? -1 : Integer.parseInt(sel); } catch (NumberFormatException e) { idx = -1; }
+                try {
+                    idx = sel == null ? -1 : Integer.parseInt(sel);
+                } catch (NumberFormatException e) {
+                    idx = -1;
+                }
                 if (idx == 1) picked.add(c.getId());
             }
-            if (picked.size() != min) { playerActor.sendMessage(miniMessage(applyPlaceholders(config.mustSelectExactly, Map.of("%min%", String.valueOf(min))), null)); new SimpleBlockBallotMenu(playerActor, getParentMenu(), electionsService, electionId).open(); return; }
+            if (picked.size() != min) {
+                String base = BallotError.MUST_SELECT_EXACTLY_MIN.errorString();
+                String detail = applyPlaceholders(config.mustSelectExactly, Map.of("%min%", String.valueOf(min)));
+                new ErrorMenu(playerActor, getParentMenu(), "error_simple_block_min_" + electionId + "_" + player.getUniqueId(),
+                        java.util.List.of(base, detail)).open();
+                return;
+            }
             new LoadingMenu(playerActor, getParentMenu(), miniMessage(config.loadingTitle, ph), miniMessage(config.loadingMessage, ph)).open();
             new BukkitRunnable() {
                 @Override
@@ -147,8 +159,16 @@ public class SimpleBlockBallotMenu extends ChildMenuImp {
                         public void run() {
                             // Close loading dialog after async completes
                             playerActor.closeDialog();
-                            if (!ok) { playerActor.sendMessage(miniMessage(config.submissionFailed)); new SimpleBlockBallotMenu(playerActor, getParentMenu(), electionsService, electionId).open(); }
-                            else { playerActor.sendMessage(miniMessage(config.submitted)); SoundHelper.play(playerActor, config.successSound); BallotSessions.clear(playerActor.getUniqueId(), electionId); }
+                            if (!ok) {
+                                String base = BallotError.SUBMISSION_FAILED.errorString();
+                                String detail = config.submissionFailed;
+                                new ErrorMenu(playerActor, getParentMenu(), "error_simple_block_submit_" + electionId + "_" + player.getUniqueId(),
+                                        java.util.List.of(base, detail)).open();
+                            } else {
+                                playerActor.sendMessage(miniMessage(config.submitted));
+                                SoundHelper.play(playerActor, config.successSound);
+                                BallotSessions.clear(playerActor.getUniqueId(), electionId);
+                            }
                         }
                     }.runTask(Elections.getInstance());
                 }

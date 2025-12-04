@@ -1,5 +1,7 @@
 package net.democracycraft.elections;
 
+import net.democracycraft.elections.api.model.BallotError;
+import net.democracycraft.elections.api.model.BallotErrorConfigProvider;
 import net.democracycraft.elections.api.service.ElectionsService;
 import net.democracycraft.elections.command.ElectionsCommand;
 import net.democracycraft.elections.database.DatabaseSchema;
@@ -45,6 +47,8 @@ public class Elections extends JavaPlugin {
         // Ensure missing keys are populated from defaults when config.yml already exists
         getConfig().options().copyDefaults(true);
         saveConfig();
+        // Store globally for BallotError
+        BallotErrorConfigProvider.init();
 
         // MySQL + schema
         this.mysql = new MySQLManager(this);
