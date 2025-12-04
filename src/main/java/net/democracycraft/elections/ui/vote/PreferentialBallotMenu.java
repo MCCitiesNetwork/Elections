@@ -13,16 +13,12 @@ import net.democracycraft.elections.api.service.ElectionsService;
 import net.democracycraft.elections.api.ui.ParentMenu;
 import net.democracycraft.elections.data.VotingSystem;
 import net.democracycraft.elections.ui.ChildMenuImp;
-import net.democracycraft.elections.util.HeadUtil;
 import net.democracycraft.elections.api.ui.AutoDialog;
 import net.democracycraft.elections.ui.common.ErrorMenu;
 import net.democracycraft.elections.ui.common.LoadingMenu;
 import net.democracycraft.elections.util.sound.SoundHelper;
 import net.democracycraft.elections.util.sound.SoundSpec;
-import net.democracycraft.elections.util.text.MiniMessageUtil;
 import net.kyori.adventure.text.Component;
-import net.kyori.adventure.text.serializer.gson.GsonComponentSerializer;
-import net.kyori.adventure.text.serializer.legacy.LegacyComponentSerializer;
 import org.bukkit.entity.Player;
 import org.bukkit.scheduler.BukkitRunnable;
 
@@ -62,8 +58,6 @@ public class PreferentialBallotMenu extends ChildMenuImp {
         public String submitted = "<green><bold>Ballot submitted.</bold></green>";
         public String clearBtn = "<yellow>Clear</yellow>";
         public String backBtn = "<red><bold>Back</bold></red>";
-        /** Rank input label for a candidate. Placeholders: %max%, %candidate_name%, %candidate_party%. */
-        public String rankForFormat = "<aqua>Rank (1..%max%) for %candidate_name% (%candidate_party%)</aqua>";
         /** YAML header with supported placeholders. */
         public String yamlHeader = "PreferentialBallotMenu configuration. Placeholders: %election_title%, %min%, %max%, %rank%, %candidate_name%, %candidate_party%. ";
         /** Loading dialog title shown while submitting. */
@@ -73,12 +67,8 @@ public class PreferentialBallotMenu extends ChildMenuImp {
         /** Sound to play when submission succeeds. */
         public SoundSpec successSound = new SoundSpec();
         public String valueGrayFormat = "<gray>%value%</gray>";
-        /** Candidate checkbox label format. Placeholders: %candidate_name%, %candidate_party%. */
-        public String candidateNameLabelFormat = "<gray>%candidate_name% (%candidate_party%)</gray>";
         /** Label to use when a candidate has no party set (null/blank). */
         public String partyUnknown = "Independent";
-        /** Label format key used by the number range input; this is passed to {@code labelFormat(String)}. */
-        public String sliderLabelFormat = "options.generic_value";
         /** Label for each candidate slider. Placeholders: %candidate_name%, %candidate_party%, %current_rank%. */
         public String candidateSliderLabelFormat = "<white>%candidate_name%</white> <gray>(%candidate_party%)</gray> <gray> | Current: </gray>";
         /** Text used when a candidate currently has no rank assigned. */
