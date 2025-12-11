@@ -1,7 +1,7 @@
 package net.democracycraft.elections.api.model;
 
-import net.democracycraft.elections.data.Dto;
-import net.democracycraft.elections.util.text.MiniMessageUtil;
+import net.democracycraft.elections.src.data.Dto;
+import net.democracycraft.elections.src.util.text.MiniMessageUtil;
 import net.kyori.adventure.text.Component;
 
 import java.util.function.Function;

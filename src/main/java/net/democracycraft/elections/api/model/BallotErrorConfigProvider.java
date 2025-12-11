@@ -1,7 +1,7 @@
 package net.democracycraft.elections.api.model;
 
-import net.democracycraft.elections.util.config.DataFolder;
-import net.democracycraft.elections.util.yml.AutoYML; /**
+import net.democracycraft.elections.src.util.config.DataFolder;
+import net.democracycraft.elections.src.util.yml.AutoYML; /**
  * Internal utility responsible for providing a shared {@link BallotError.Config}
  * instance. This provider is self-contained: it creates and loads the
  * underlying {@link AutoYML} store on demand when {@link #init()} is called,
