@@ -1,6 +1,6 @@
 package net.democracycraft.elections.api.model;
 
-import net.democracycraft.elections.data.TimeStampDto;
+import net.democracycraft.elections.src.data.TimeStampDto;
 
 import java.util.List;
 

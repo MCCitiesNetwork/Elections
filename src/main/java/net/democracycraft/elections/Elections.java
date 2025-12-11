@@ -1,25 +1,28 @@
 package net.democracycraft.elections;
 
-import net.democracycraft.elections.api.model.BallotError;
 import net.democracycraft.elections.api.model.BallotErrorConfigProvider;
 import net.democracycraft.elections.api.service.ElectionsService;
-import net.democracycraft.elections.command.ElectionsCommand;
-import net.democracycraft.elections.database.DatabaseSchema;
-import net.democracycraft.elections.database.MySQLManager;
-import net.democracycraft.elections.service.SqlElectionsService;
-import net.democracycraft.elections.util.export.github.GitHubGistClient;
-import net.democracycraft.elections.util.listener.PollInteractListener;
-import net.democracycraft.elections.util.listener.PlayerJoinHeadCacheListener;
-import net.democracycraft.elections.util.permissions.PermissionNodesStore;
-import net.democracycraft.elections.util.config.DataFolder;
-import net.democracycraft.elections.util.yml.AutoYML;
+import net.democracycraft.elections.src.command.ElectionsCommand;
+import net.democracycraft.elections.src.database.DatabaseSchema;
+import net.democracycraft.elections.src.database.MySQLManager;
+import net.democracycraft.elections.src.service.SqlElectionsService;
+import net.democracycraft.elections.src.ui.common.ErrorMenu;
+import net.democracycraft.elections.src.ui.common.LoadingMenu;
+import net.democracycraft.elections.src.ui.list.ElectionPreviewMenu;
+import net.democracycraft.elections.src.ui.manager.*;
+import net.democracycraft.elections.src.ui.manager.create.*;
+import net.democracycraft.elections.src.ui.vote.*;
+import net.democracycraft.elections.src.util.export.github.GitHubGistClient;
+import net.democracycraft.elections.src.util.listener.PollInteractListener;
+import net.democracycraft.elections.src.util.listener.PlayerJoinHeadCacheListener;
+import net.democracycraft.elections.src.util.permissions.PermissionNodesStore;
 import org.bukkit.command.PluginCommand;
 import org.bukkit.event.Listener;
 import org.bukkit.plugin.ServicePriority;
 import org.bukkit.plugin.java.JavaPlugin;
 import org.bukkit.scheduler.BukkitTask;
-import net.democracycraft.elections.util.config.ConfigPaths;
-import net.democracycraft.elections.util.export.local.queue.LocalExportedElectionQueue;
+import net.democracycraft.elections.src.util.config.ConfigPaths;
+import net.democracycraft.elections.src.util.export.local.queue.LocalExportedElectionQueue;
 
 /**
  * Main plugin entry point for DemocracyElections.
@@ -44,10 +47,10 @@ public class Elections extends JavaPlugin {
     public void onEnable() {
         instance = this;
         saveDefaultConfig();
-        // Ensure missing keys are populated from defaults when config.yml already exists
+
         getConfig().options().copyDefaults(true);
         saveConfig();
-        // Store globally for BallotError
+
         BallotErrorConfigProvider.init();
 
         // MySQL + schema
@@ -99,8 +102,7 @@ public class Elections extends JavaPlugin {
         registerListener(new PollInteractListener(electionsService));
         registerListener(new PlayerJoinHeadCacheListener(electionsService));
 
-
-        GitHubGistClient.loadConfig();
+        loadConfig();
     }
 
     private void registerListener(Listener listener){
@@ -169,4 +171,34 @@ public class Elections extends JavaPlugin {
      * @return local export queue singleton.
      */
     public LocalExportedElectionQueue getLocalExportQueue() { return localQueue; }
+
+
+    private void loadConfig() {
+        GitHubGistClient.loadConfig();
+        ErrorMenu.Config.loadConfig();
+        LoadingMenu.Config.loadConfig();
+        ElectionPreviewMenu.Config.loadConfig();
+        ElectionCreateBasicsMenu.Config.loadConfig();
+        ElectionCreateConfirmMenu.Config.loadConfig();
+        ElectionCreateDurationMenu.Config.loadConfig();
+        ElectionCreateRequirementsMenu.Config.loadConfig();
+        ElectionCreateSystemMenu.Config.loadConfig();
+        ElectionCreateWizard.Config.loadConfig();
+        BallotModeMenu.Config.loadConfig();
+        CandidatesMenu.Config.loadConfig();
+        DurationMenu.Config.loadConfig();
+        ElectionListMenu.Config.loadConfig();
+        ElectionManagerMenu.Config.loadConfig();
+        PollsConfigMenu.Config.loadConfig();
+        RequirementsMenu.Config.loadConfig();
+        SystemAndMinimumMenu.Config.loadConfig();
+        TitleEditMenu.Config.loadConfig();
+        BallotIntroMenu.Config.loadConfig();
+        BlockBallotMenu.Config.loadConfig();
+        CandidateListMenu.Config.loadConfig();
+        CandidateVoteMenu.Config.loadConfig();
+        PreferentialBallotMenu.Config.loadConfig();
+        SimpleBlockBallotMenu.Config.loadConfig();
+        SimplePreferentialBallotMenu.Config.loadConfig();
+    }
 }
