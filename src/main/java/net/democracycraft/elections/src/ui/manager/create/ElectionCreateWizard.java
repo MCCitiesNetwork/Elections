@@ -40,6 +40,8 @@ public class ElectionCreateWizard extends ParentMenuImp {
         public String startBtn = "<yellow><bold>Start</bold></yellow>";
         public String cancelBtn = "<gray>Cancel</gray>";
         public String yamlHeader = "ElectionCreateWizard configuration.";
+        /** Whether the dialog can be closed with Escape. */
+        public boolean canCloseWithEscape = true;
         public Config() {}
 
         public static void loadConfig() {
@@ -54,7 +56,7 @@ public class ElectionCreateWizard extends ParentMenuImp {
         Config config = yml.loadOrCreate(Config::new);
 
         builder.title(miniMessage(config.title, null));
-        builder.canCloseWithEscape(true);
+        builder.canCloseWithEscape(config.canCloseWithEscape);
         builder.afterAction(DialogBase.DialogAfterAction.CLOSE);
 
         builder.addBody(DialogBody.plainMessage(miniMessage(config.intro1, null)));

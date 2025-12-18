@@ -46,6 +46,8 @@ public class BallotIntroMenu extends ParentMenuImp {
         public String closeBtn = "<red><bold>Close</bold></red>";
         public String yamlHeader = "BallotIntroMenu configuration. Placeholders: %election_title%, %system%, %min%.";
         public String valueGrayFormat = "<gray>%value%</gray>";
+        /** Whether the dialog can be closed with Escape. */
+        public boolean canCloseWithEscape = true;
         public Config() {}
 
         public static void loadConfig() {
@@ -77,7 +79,7 @@ public class BallotIntroMenu extends ParentMenuImp {
         );
 
         dialogBuilder.title(miniMessage(config.titleFormat, placeholders));
-        dialogBuilder.canCloseWithEscape(true);
+        dialogBuilder.canCloseWithEscape(config.canCloseWithEscape);
         dialogBuilder.afterAction(DialogBase.DialogAfterAction.CLOSE);
 
         String howTo = election.getSystem() == VotingSystem.BLOCK ? applyPlaceholders(config.howBlock, placeholders) : applyPlaceholders(config.howPreferential, placeholders);

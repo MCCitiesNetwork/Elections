@@ -10,7 +10,6 @@ import net.democracycraft.elections.api.ui.ParentMenu;
 import net.democracycraft.elections.src.data.BallotMode;
 import net.democracycraft.elections.src.ui.ChildMenuImp;
 import net.democracycraft.elections.api.ui.AutoDialog;
-import net.democracycraft.elections.src.ui.manager.create.ElectionCreateWizard;
 import net.kyori.adventure.text.Component;
 import org.bukkit.entity.Player;
 import org.bukkit.scheduler.BukkitRunnable;
@@ -51,6 +50,8 @@ public class BallotModeMenu extends ChildMenuImp {
         public String failedMsg = "<red><bold>Could not update ballot mode.</bold></red>";
         public String backBtn = "<gray>Back</gray>";
         public String yamlHeader = "BallotModeMenu configuration. Placeholders: %election_id%, %mode%.";
+        /** Whether the dialog can be closed with Escape. */
+        public boolean canCloseWithEscape = true;
         public Config() {}
 
         public static void loadConfig() {
@@ -74,7 +75,7 @@ public class BallotModeMenu extends ChildMenuImp {
         Map<String,String> ph = Map.of("%election_id%", String.valueOf(electionId), "%mode%", election.getBallotMode().name());
 
         dialogBuilder.title(miniMessage(config.title, ph));
-        dialogBuilder.canCloseWithEscape(true);
+        dialogBuilder.canCloseWithEscape(config.canCloseWithEscape);
         dialogBuilder.afterAction(DialogBase.DialogAfterAction.CLOSE);
 
         Component body = Component.newline()

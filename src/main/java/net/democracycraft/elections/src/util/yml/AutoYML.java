@@ -81,8 +81,20 @@ public class AutoYML<T extends Serializable> {
                 Object raw = yaml.load(reader);
                 if (!(raw instanceof Map)) return null;
                 @SuppressWarnings("unchecked")
-                Map<String, Object> map = (Map<String, Object>) raw;
-                return buildFromMap(map, clazz);
+                Map<String, Object> originalMap = (Map<String, Object>) raw;
+
+                // Build instance using constructor defaults and then apply YAML values
+                T instance = buildFromMap(originalMap, clazz);
+
+                // Auto-upgrade: if new fields are missing in YAML, merge defaults and re-save non-destructively
+                Map<String, Object> serialized = toMap(instance);
+                if (hasMissing(originalMap, serialized)) {
+
+                    Map<String, Object> merged = new LinkedHashMap<>(originalMap);
+                    mergeMissing(merged, serialized);
+                    saveMap(merged);
+                }
+                return instance;
             } catch (Exception e) {
                 Elections.getInstance().getLogger().log(Level.SEVERE, "Failed to load YAML: " + file, e);
                 return null;
@@ -104,17 +116,61 @@ public class AutoYML<T extends Serializable> {
     public void save(T obj) {
         synchronized (ioLock) {
             Map<String, Object> map = toMap(obj);
-            // Use OutputStreamWriter with explicit UTF-8
-            try (OutputStreamWriter writer = new OutputStreamWriter(new FileOutputStream(file), StandardCharsets.UTF_8)) {
-                if (header != null && !header.isEmpty()) {
-                    for (String line : header.split("\n")) {
-                        writer.write("# " + line + "\n");
-                    }
-                    writer.write("\n");
+            saveMap(map);
+        }
+    }
+
+    // Write the provided map to disk respecting the configured header
+    private void saveMap(Map<String, Object> map) {
+        // Use OutputStreamWriter with explicit UTF-8
+        try (OutputStreamWriter writer = new OutputStreamWriter(new FileOutputStream(file), StandardCharsets.UTF_8)) {
+            if (header != null && !header.isEmpty()) {
+                for (String line : header.split("\n")) {
+                    writer.write("# " + line + "\n");
                 }
-                yaml.dump(map, writer);
-            } catch (IOException e) {
-                Elections.getInstance().getLogger().log(Level.SEVERE, "Failed to save YAML: " + file, e);
+                writer.write("\n");
+            }
+            yaml.dump(map, writer);
+        } catch (IOException e) {
+            Elections.getInstance().getLogger().log(Level.SEVERE, "Failed to save YAML: " + file, e);
+        }
+    }
+
+    // Returns true if there are keys present in 'expected' that are missing in 'current';
+    // performs a deep check for nested maps.
+    @SuppressWarnings("unchecked")
+    private static boolean hasMissing(Map<String, Object> current, Map<String, Object> expected) {
+        for (Map.Entry<String, Object> e : expected.entrySet()) {
+            String key = e.getKey();
+            Object expectedVal = e.getValue();
+            if (!current.containsKey(key)) return true;
+            Object currentVal = current.get(key);
+            if (expectedVal instanceof Map && currentVal instanceof Map) {
+                if (hasMissing((Map<String, Object>) currentVal, (Map<String, Object>) expectedVal)) return true;
+            }
+        }
+        return false;
+    }
+
+    // Merge into 'target' only the missing keys from 'source';
+    // for nested maps, the merge is recursive and does not overwrite existing values.
+    // If a type mismatch is encountered (e.g., scalar vs map), the existing value is preserved.
+    @SuppressWarnings("unchecked")
+    private static void mergeMissing(Map<String, Object> target, Map<String, Object> source) {
+        for (Map.Entry<String, Object> e : source.entrySet()) {
+            String key = e.getKey();
+            Object srcVal = e.getValue();
+            if (!target.containsKey(key)) {
+                target.put(key, srcVal);
+            } else {
+                Object tgtVal = target.get(key);
+                if (srcVal instanceof Map && tgtVal instanceof Map) {
+                    mergeMissing((Map<String, Object>) tgtVal, (Map<String, Object>) srcVal);
+                } else if (srcVal instanceof Map && !(tgtVal instanceof Map)) {
+                    // Type mismatch: keep legacy scalar/list value to avoid breaking old configs
+                    // Elections.getInstance().getLogger().fine("YAML key '" + key + "' type mismatch (expected map); preserving existing value.");
+                }
+                // For lists or other types, do not overwrite existing values
             }
         }
     }
@@ -402,3 +458,4 @@ public class AutoYML<T extends Serializable> {
         return String.valueOf(key);
     }
 }
+

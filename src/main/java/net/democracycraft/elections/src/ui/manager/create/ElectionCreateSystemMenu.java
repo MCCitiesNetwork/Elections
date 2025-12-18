@@ -42,6 +42,8 @@ public class ElectionCreateSystemMenu extends ChildMenuImp {
         public float minVotesMin = 1f;
         public float minVotesMax = 10000f;
         public float minVotesStep = 1f;
+        /** Whether the dialog can be closed with Escape. */
+        public boolean canCloseWithEscape = true;
         public Config() {}
 
         public static void loadConfig() {
@@ -56,7 +58,7 @@ public class ElectionCreateSystemMenu extends ChildMenuImp {
 
         AutoDialog.Builder dialogBuilder = getAutoDialogBuilder();
         dialogBuilder.title(miniMessage(config.title, null));
-        dialogBuilder.canCloseWithEscape(true);
+        dialogBuilder.canCloseWithEscape(config.canCloseWithEscape);
         dialogBuilder.afterAction(DialogBase.DialogAfterAction.CLOSE);
 
         dialogBuilder.addBody(DialogBody.plainMessage(

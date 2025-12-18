@@ -75,9 +75,25 @@ public final class PermissionPath {
         return false;
     }
 
+    /**
+     * Returns all hierarchical prefixes for this permission, from the first segment up to full depth.
+     * Example: name="group.voter.otherperm" -> ["group", "group.voter", "group.voter.otherperm"].
+     * The output preserves original casing.
+     */
+    public List<String> getPrefixes() {
+        if (nodes.isEmpty()) return Collections.emptyList();
+        List<String> out = new ArrayList<>(nodes.size());
+        StringBuilder sb = new StringBuilder();
+        for (int i = 0; i < nodes.size(); i++) {
+            if (i > 0) sb.append('.');
+            sb.append(nodes.get(i));
+            out.add(sb.toString());
+        }
+        return Collections.unmodifiableList(out);
+    }
+
     @Override
     public String toString() {
         return name;
     }
 }
-

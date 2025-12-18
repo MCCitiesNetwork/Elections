@@ -92,4 +92,19 @@ public class PermissionScanner {
         }
         return result;
     }
+
+    /**
+     * Builds an expanded list of permission node strings for configured prefixes, including hierarchical prefixes.
+     * For each matched Permission, it adds all prefixes of its name (e.g., 'group', 'group.voter', 'group.voter.otherperm').
+     * The result is de-duplicated and preserves original casing.
+     */
+    public static List<String> buildExpandedNodes(PermissionNodesDto dto) {
+        List<Permission> perms = getPermissionsForNodesPrefix(dto);
+        Set<String> out = new LinkedHashSet<>();
+        for (Permission p : perms) {
+            PermissionPath path = PermissionPath.from(p);
+            out.addAll(path.getPrefixes());
+        }
+        return new ArrayList<>(out);
+    }
 }

@@ -87,7 +87,8 @@ public class ElectionManagerMenu extends ParentMenuImp {
         public String permissionDeniedMsg = "<red>You don't have permission.</red>";
         public String deleteConfirmTitle = "<red><bold>Delete Election?</bold></red>";
         public String deleteConfirmFinalTitle = "<red><bold>Really delete?</bold></red>";
-
+        /** Whether the dialog can be closed with Escape. */
+        public boolean canCloseWithEscape = true;
         public Config() {}
 
         public static void loadConfig() {
@@ -135,7 +136,7 @@ public class ElectionManagerMenu extends ParentMenuImp {
 
         AutoDialog.Builder builder = getAutoDialogBuilder();
         builder.title(miniMessage(config.header, placeholders));
-        builder.canCloseWithEscape(true);
+        builder.canCloseWithEscape(config.canCloseWithEscape);
         builder.afterAction(DialogBase.DialogAfterAction.CLOSE);
 
         // Overview/info body

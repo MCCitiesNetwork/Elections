@@ -1,6 +1,5 @@
 package net.democracycraft.elections.src.ui.vote;
 
-import net.democracycraft.elections.src.ui.MenuImp;
 import io.papermc.paper.dialog.Dialog;
 import io.papermc.paper.registry.data.dialog.DialogBase;
 import io.papermc.paper.registry.data.dialog.body.DialogBody;
@@ -18,7 +17,6 @@ import net.democracycraft.elections.src.ui.common.ErrorMenu;
 import net.democracycraft.elections.src.ui.common.LoadingMenu;
 import net.democracycraft.elections.src.util.sound.SoundHelper;
 import net.democracycraft.elections.src.util.sound.SoundSpec;
-import net.democracycraft.elections.src.util.yml.AutoYML;
 import net.kyori.adventure.text.Component;
 import org.bukkit.entity.Player;
 import org.bukkit.scheduler.BukkitRunnable;
@@ -75,6 +73,8 @@ public class SimplePreferentialBallotMenu extends ChildMenuImp {
         /** Sound to play when submission succeeds. */
         public SoundSpec successSound = new SoundSpec();
         public String partyUnknown = "Independent";
+        /** Whether the dialog can be closed with Escape. */
+        public boolean canCloseWithEscape = true;
         public Config() {}
 
 
@@ -110,7 +110,7 @@ public class SimplePreferentialBallotMenu extends ChildMenuImp {
         );
 
         dialogBuilder.title(miniMessage(config.titleFormat, ph));
-        dialogBuilder.canCloseWithEscape(true);
+        dialogBuilder.canCloseWithEscape(config.canCloseWithEscape);
         dialogBuilder.afterAction(DialogBase.DialogAfterAction.CLOSE);
 
         dialogBuilder.addBody(DialogBody.plainMessage(Component.newline().append(miniMessage(config.instruction, ph))));
@@ -208,7 +208,21 @@ public class SimplePreferentialBallotMenu extends ChildMenuImp {
         });
 
         dialogBuilder.button(miniMessage(config.clearBtn, ph), ctx -> { session.clearAll(); new SimplePreferentialBallotMenu(ctx.player(), getParentMenu(), electionsService, electionId).open(); });
-        dialogBuilder.button(miniMessage(config.backBtn, ph), ctx -> getParentMenu().open());
+
+        dialogBuilder.buttonWithPlayer(miniMessage(config.backBtn, ph), null, (playerActor, response) -> {
+            for (Candidate c : election.getCandidates()) {
+                String key = "RANK_" + c.getId();
+                String txt = response.getText(key);
+                int idx;
+                try { idx = txt == null ? 0 : Integer.parseInt(txt); } catch (NumberFormatException e) { idx = 0; }
+                if (idx >= 1 && idx <= maxRank) {
+                    session.setRank(c.getId(), idx);
+                } else {
+                    session.clearRank(c.getId());
+                }
+            }
+            getParentMenu().open();
+        });
 
         return dialogBuilder.build();
     }

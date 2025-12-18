@@ -28,8 +28,8 @@ Quick tip: the base command is `/elections` (alias: `/democracyelections`).
   - Allows `/elections health`.
 - `elections.permissions.reload` (default: op)
   - Allows `/elections reloadperms`.
-- `elections.paste` (default: op)
-  - Extra gate for paste deletion (used by `/elections export delete`). Managers/Admins can also delete.
+- `elections.delete` (default: op)
+  - Extra gate for delete operations (used by `/elections export delete`). Managers/Admins can also delete.
 - `elections.admin` (default: op)
   - Admin umbrella. Inherits all Elections permissions (including `elections.command`).
 - `elections.user` (default: true)
@@ -54,7 +54,7 @@ All commands require `elections.command` plus the specific node:
 - `/elections export ballots admin <local|online> <id>`
   - Export only ballots as JSON (pretty printed) with voter names. Ballots are objects with `id`, `voter`, and `selections`. Requires: `elections.export.ballots.admin` (or `elections.admin`).
 - `/elections export delete <pasteId> confirm`
-  - Delete a paste on paste.gg (needs a valid API key). Requires: `elections.export` + (`elections.paste` or `elections.manager`/`elections.admin`).
+  - Delete a paste on paste.gg (needs a valid API key). Requires: `elections.export` + (`elections.delete` or `elections.manager`/`elections.admin`).
 - `/elections export dispatch`
   - Process the local queue now (uploads pending files). Requires: `elections.manager` (or `elections.admin`).
 - `/elections reloadperms`

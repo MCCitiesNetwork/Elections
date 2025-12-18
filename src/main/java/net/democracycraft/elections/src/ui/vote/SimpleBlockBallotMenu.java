@@ -1,7 +1,5 @@
 package net.democracycraft.elections.src.ui.vote;
 
-import net.democracycraft.elections.src.ui.MenuImp;
-
 
 import io.papermc.paper.dialog.Dialog;
 import io.papermc.paper.registry.data.dialog.DialogBase;
@@ -80,6 +78,7 @@ public class SimpleBlockBallotMenu extends ChildMenuImp {
         public String candidateLabelFormat = "<white>%candidate_name%</white> <gray>(%candidate_party%)</gray>";
         /** Label to use when a candidate has no party set (null/blank). */
         public String partyUnknown = "Independent";
+        public boolean canCloseWithEscape = true;
         public Config() {}
 
         public static void loadConfig() {
@@ -99,6 +98,8 @@ public class SimpleBlockBallotMenu extends ChildMenuImp {
         AutoDialog.Builder dialogBuilder = getAutoDialogBuilder();
         var menuYml = getOrCreateMenuYml(Config.class, getMenuConfigFileName(), new Config().yamlHeader);
         Config config = menuYml.loadOrCreate(Config::new);
+
+        dialogBuilder.canCloseWithEscape(config.canCloseWithEscape);
 
         if (optionalElection.isEmpty()) {
             dialogBuilder.title(miniMessage(config.titleFallback));
@@ -185,7 +186,20 @@ public class SimpleBlockBallotMenu extends ChildMenuImp {
         });
 
         dialogBuilder.button(miniMessage(config.clearBtn, ph), ctx -> { session.clearAll(); new SimpleBlockBallotMenu(ctx.player(), getParentMenu(), electionsService, electionId).open(); });
-        dialogBuilder.button(miniMessage(config.backBtn, ph), ctx -> getParentMenu().open());
+
+
+        dialogBuilder.buttonWithPlayer(miniMessage(config.backBtn, ph), null, (playerActor, response) -> {
+            BallotSessions.Session session1 = BallotSessions.get(playerActor.getUniqueId(), electionId, election.getSystem());
+            session1.setSystem(election.getSystem());
+            for (Candidate c : election.getCandidates()) {
+                String key = "SEL_" + c.getId();
+                String sel = response.getText(key);
+                int idx;
+                try { idx = sel == null ? -1 : Integer.parseInt(sel); } catch (NumberFormatException e) { idx = -1; }
+                session1.setSelected(c.getId(), idx == 1);
+            }
+            getParentMenu().open();
+        });
 
         return dialogBuilder.build();
     }

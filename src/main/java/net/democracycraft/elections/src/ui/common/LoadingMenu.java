@@ -6,7 +6,6 @@ import io.papermc.paper.registry.data.dialog.body.DialogBody;
 import net.democracycraft.elections.api.ui.ParentMenu;
 import net.democracycraft.elections.src.ui.ChildMenuImp;
 import net.democracycraft.elections.api.ui.AutoDialog;
-import net.democracycraft.elections.src.ui.vote.SimpleBlockBallotMenu;
 import net.kyori.adventure.text.Component;
 import org.bukkit.entity.Player;
 
@@ -66,7 +65,8 @@ public class LoadingMenu extends ChildMenuImp {
     public static class Config implements Serializable {
         public String title = "<gold><bold>Loading</bold></gold>";
         public String message = "<gray><italic>Loading…</italic></gray>";
-        public String yamlHeader = "LoadingMenu configuration. Placeholders: %player%.";
+        public String yamlHeader = "LoadingMenu configuration, most titles/messages are established per menu. Placeholders: %player%";
+        public boolean canCloseWithEscape = true;
         public Config() {}
 
         public static void loadConfig() {
@@ -83,6 +83,7 @@ public class LoadingMenu extends ChildMenuImp {
         dialogBuilder.title(titleOverride != null ? titleOverride : miniMessage(config.title));
         dialogBuilder.canCloseWithEscape(true);
         dialogBuilder.afterAction(DialogBase.DialogAfterAction.CLOSE);
+        dialogBuilder.canCloseWithEscape(config.canCloseWithEscape);
         // Message body: use override if provided
         Component body = messageOverride != null ? messageOverride : miniMessage(config.message);
         dialogBuilder.addBody(DialogBody.plainMessage(body));

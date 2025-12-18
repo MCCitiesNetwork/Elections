@@ -419,7 +419,7 @@ public class ExportCommand implements Subcommand {
         Elections plugin = context.plugin();
 
         if (!context.sender().hasPermission("elections.manager") &&
-            !context.sender().hasPermission("elections.paste") &&
+            !context.sender().hasPermission("elections.delete") &&
             !context.sender().hasPermission("elections.admin")) {
             Component msg = MiniMessageUtil.parseOrPlain(messages.errorNoPermission);
             context.sender().sendMessage(msg);

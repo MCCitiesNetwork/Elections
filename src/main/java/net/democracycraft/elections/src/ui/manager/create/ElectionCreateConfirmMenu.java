@@ -50,6 +50,8 @@ public class ElectionCreateConfirmMenu extends ChildMenuImp {
         /** Loading dialog title and message while creating. */
         public String loadingTitle = "<gold><bold>Creating</bold></gold>";
         public String loadingMessage = "<gray><italic>Creating election…</italic></gray>";
+        /** Whether the dialog can be closed with Escape. */
+        public boolean canCloseWithEscape = true;
         public Config() {}
 
         public static void loadConfig() {
@@ -64,7 +66,7 @@ public class ElectionCreateConfirmMenu extends ChildMenuImp {
         Config config = menuYml.loadOrCreate(Config::new);
 
         dialogBuilder.title(miniMessage(config.title, null));
-        dialogBuilder.canCloseWithEscape(true);
+        dialogBuilder.canCloseWithEscape(config.canCloseWithEscape);
         dialogBuilder.afterAction(DialogBase.DialogAfterAction.CLOSE);
 
         String durationStr;

@@ -17,7 +17,7 @@ permissions:
       elections.manager: true
       elections.export: true
       elections.permissions.reload: true
-      elections.paste: true
+      elections.delete: true
       elections.health: true
       elections.user: true
   elections.manager:
@@ -40,8 +40,8 @@ permissions:
   elections.permissions.reload:
     description: Reload the permission nodes configuration
     default: op
-  elections.paste:
-    description: Manage paste operations (delete)
+  elections.delete:
+    description: Manage delete operations for exported resources
     default: op
   elections.health:
     description: View elections health stats

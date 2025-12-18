@@ -64,6 +64,8 @@ public class RequirementsMenu extends ChildMenuImp {
         /** Loading dialog title and message while saving. */
         public String loadingTitle = "<gold><bold>Saving</bold></gold>";
         public String loadingMessage = "<gray><italic>Applying requirements…</italic></gray>";
+        /** Whether the dialog can be closed with Escape. */
+        public boolean canCloseWithEscape = true;
         public Config() {}
 
         public static void loadConfig() {
@@ -84,21 +86,29 @@ public class RequirementsMenu extends ChildMenuImp {
 
         AutoDialog.Builder dialogBuilder = getAutoDialogBuilder();
         dialogBuilder.title(miniMessage(config.title, placeholders));
-        dialogBuilder.canCloseWithEscape(true);
+        dialogBuilder.canCloseWithEscape(config.canCloseWithEscape);
         dialogBuilder.afterAction(DialogBase.DialogAfterAction.CLOSE);
 
         dialogBuilder.addBody(DialogBody.plainMessage(miniMessage(config.description, placeholders)));
 
         PermissionNodesStore store = Elections.getInstance().getPermissionNodesStore();
         PermissionNodesDto nodesDto = store.get();
-        List<Permission> filteredPermissions = PermissionScanner.getPermissionsForNodesPrefix(nodesDto);
-        Map<String, Permission> permissionsByName = new LinkedHashMap<>();
-        for (Permission permission : filteredPermissions) permissionsByName.put(permission.getName(), permission);
-
-        for (Permission permission : permissionsByName.values()) {
-            String key = permKey(permission.getName());
-            boolean initial = currentPerms.contains(permission.getName());
-            dialogBuilder.addInput(DialogInput.bool(key, miniMessage("<gray>" + permission.getName() + "</gray>")).initial(initial).build());
+        // Build expanded node strings including hierarchical prefixes
+        List<String> expandedNodes = PermissionScanner.buildExpandedNodes(nodesDto);
+        // Fallback: if nothing matched, show raw configured nodes so users can still select base nodes
+        if (expandedNodes.isEmpty() && nodesDto != null && nodesDto.nodes() != null) {
+            expandedNodes = new ArrayList<>(nodesDto.nodes());
+        }
+        // Deduplicate and keep order
+        LinkedHashSet<String> nodeSet = new LinkedHashSet<>(expandedNodes);
+        // Map node -> key
+        Map<String, String> nodeToKey = new LinkedHashMap<>();
+        for (String node : nodeSet) {
+            if (node == null || node.isBlank()) continue;
+            String key = permKey(node);
+            nodeToKey.put(node, key);
+            boolean initial = currentPerms.contains(node);
+            dialogBuilder.addInput(DialogInput.bool(key, miniMessage("<gray>" + node + "</gray>")).initial(initial).build());
         }
 
         dialogBuilder.addInput(DialogInput.numberRange(Keys.PLAYTIME.name(), miniMessage(config.playtimeLabel, placeholders), config.playtimeMin, config.playtimeMax).step(config.playtimeStep).initial((float) currentMinutes).build());
@@ -106,10 +116,11 @@ public class RequirementsMenu extends ChildMenuImp {
 
         dialogBuilder.buttonWithPlayer(miniMessage(config.saveBtn, placeholders), null, (playerActor, response) -> {
             List<String> newPerms = new ArrayList<>();
-            for (Permission permission : permissionsByName.values()) {
-                String key = permKey(permission.getName());
+            for (Map.Entry<String, String> e : nodeToKey.entrySet()) {
+                String node = e.getKey();
+                String key = e.getValue();
                 Boolean selection = response.getBoolean(key);
-                if (selection != null && selection) newPerms.add(permission.getName());
+                if (selection != null && selection) newPerms.add(node);
             }
             Long minutes = null;
             String textInput = response.getText(Keys.PLAYTIME_TEXT.name());
@@ -126,7 +137,6 @@ public class RequirementsMenu extends ChildMenuImp {
             if (minutes == null) {
                 Float floatInput = response.getFloat(Keys.PLAYTIME.name());
                 long rv = floatInput == null ? currentMinutes : Math.round(floatInput);
-                // clamp
                 rv = Math.max(boundMin, Math.min(boundMax, rv));
                 minutes = Math.max(0, rv);
             }

@@ -288,6 +288,13 @@ public class SqlElectionsService implements ElectionsService {
         if (current == ElectionStatus.DELETED) return false;
         e.status = ElectionStatus.DELETED.name();
         schema.elections().insertOrUpdateSync(e);
+        // Immediately remove associated polling stations from DB
+        Map<String, Object> where = new HashMap<>();
+        where.put("electionId", id);
+        int pollsRemoved = schema.polls().deleteWhereSync(where);
+        if (pollsRemoved > 0) {
+            logChange(id, StateChangeType.POLL_REMOVED, actor, "all polls removed for election");
+        }
         logChange(id, StateChangeType.DELETED, actor, null);
         refreshElection(id);
         return true;
@@ -320,6 +327,13 @@ public class SqlElectionsService implements ElectionsService {
         e.minimumVotes = eff;
         schema.elections().insertOrUpdateSync(e);
         logChange(electionId, StateChangeType.MINIMUM_CHANGED, actor, "new="+eff);
+        // If currently OPEN and minimum exceeds candidates, auto-close
+        int candidateCount = schema.candidates().findAllBy("electionId", electionId, "id").size();
+        if (ElectionStatus.valueOf(e.status) == ElectionStatus.OPEN && eff > candidateCount) {
+            e.status = ElectionStatus.CLOSED.name();
+            schema.elections().insertOrUpdateSync(e);
+            logChange(electionId, StateChangeType.CLOSED, actor, "auto-closed: min>candidates");
+        }
         refreshElection(electionId);
         return true;
     }
@@ -353,6 +367,10 @@ public class SqlElectionsService implements ElectionsService {
         if (current == ElectionStatus.DELETED) return false; // cannot open deleted
         if (current == ElectionStatus.OPEN) return true; // idempotent
         if (current != ElectionStatus.CLOSED) return false; // only CLOSED -> OPEN
+        // Block opening when minimum exceeds candidates
+        int candidateCount = schema.candidates().findAllBy("electionId", electionId, "id").size();
+        int min = Math.max(1, e.minimumVotes);
+        if (min > candidateCount) return false;
         e.status = ElectionStatus.OPEN.name();
         schema.elections().insertOrUpdateSync(e);
         logChange(electionId, StateChangeType.OPENED, actor, null);

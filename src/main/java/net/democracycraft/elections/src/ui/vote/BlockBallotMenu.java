@@ -70,6 +70,8 @@ public class BlockBallotMenu extends ChildMenuImp {
         public String candidateLabelFormat = "<gray>%candidate_name% (%candidate_party%)</gray>";
         /** Label to use when a candidate has no party set (null/blank). */
         public String partyUnknown = "Independent";
+        /** Whether the dialog can be closed with Escape. */
+        public boolean canCloseWithEscape = true;
         public Config() {}
 
         public static void loadConfig() {
@@ -99,7 +101,7 @@ public class BlockBallotMenu extends ChildMenuImp {
         );
 
         dialogBuilder.title(miniMessage(config.titleFormat, placeholders));
-        dialogBuilder.canCloseWithEscape(true);
+        dialogBuilder.canCloseWithEscape(config.canCloseWithEscape);
         dialogBuilder.afterAction(DialogBase.DialogAfterAction.CLOSE);
 
         dialogBuilder.addBody(DialogBody.plainMessage(Component.newline()
@@ -117,10 +119,11 @@ public class BlockBallotMenu extends ChildMenuImp {
             dialogBuilder.addBody(DialogBody.item(headItem).showTooltip(true).build());
             String party = candidate.getParty();
             if (party == null || party.isBlank()) party = config.partyUnknown;
+            boolean initiallySelected = BallotSessions.get(getPlayer().getUniqueId(), electionId, election.getSystem()).isSelected(candidate.getId());
             dialogBuilder.addInput(DialogInput.bool(key, miniMessage(applyPlaceholders(config.candidateLabelFormat, Map.of(
                     "%candidate_name%", candidate.getName(),
                     "%candidate_party%", party
-            )), null)).initial(false).build());
+            )), null)).initial(initiallySelected).build());
         }
 
         dialogBuilder.buttonWithPlayer(miniMessage(config.submitBtn, placeholders), null, (playerActor, response) -> {
@@ -166,7 +169,18 @@ public class BlockBallotMenu extends ChildMenuImp {
         });
 
         dialogBuilder.button(miniMessage(config.clearBtn, placeholders), context -> new BlockBallotMenu(context.player(), getParentMenu(), electionsService, electionId).open());
-        dialogBuilder.button(miniMessage(config.backBtn, placeholders), context -> getParentMenu().open());
+
+        dialogBuilder.buttonWithPlayer(miniMessage(config.backBtn, placeholders), null, (playerActor, response) -> {
+            BallotSessions.Session session = BallotSessions.get(playerActor.getUniqueId(), electionId, election.getSystem());
+            session.setSystem(election.getSystem());
+            for (Map.Entry<String, Integer> entry : keyToId.entrySet()) {
+                String key = entry.getKey();
+                Integer candidateId = entry.getValue();
+                Boolean selected = response.getBoolean(key);
+                if (selected != null) session.setSelected(candidateId, selected);
+            }
+            getParentMenu().open();
+        });
 
         return dialogBuilder.build();
     }

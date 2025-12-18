@@ -51,6 +51,8 @@ public class ElectionPreviewMenu extends ChildMenuImp {
         public String openManagerBtn = "<yellow><bold>Open Manager</bold></yellow>";
         public String backBtn = "<gray>Back</gray>";
         public String yamlHeader = "ElectionListItemMenu configuration. Placeholders: %id%, %title%, %status%, %voters%, %candidates%, %polls%.";
+        /** Whether the dialog can be closed with Escape. */
+        public boolean canCloseWithEscape = true;
         public Config() {}
 
         public static void loadConfig() {
@@ -69,7 +71,7 @@ public class ElectionPreviewMenu extends ChildMenuImp {
 
         if (election == null) {
             dialogBuilder.title(miniMessage(config.titleFallback, null));
-            dialogBuilder.canCloseWithEscape(true);
+            dialogBuilder.canCloseWithEscape(config.canCloseWithEscape);
             dialogBuilder.afterAction(DialogBase.DialogAfterAction.CLOSE);
             dialogBuilder.addBody(DialogBody.plainMessage(miniMessage(config.notFound, null)));
             dialogBuilder.button(miniMessage(config.backBtn, null), context -> {
@@ -91,7 +93,7 @@ public class ElectionPreviewMenu extends ChildMenuImp {
         );
 
         dialogBuilder.title(miniMessage(config.titleFormat, placeholders));
-        dialogBuilder.canCloseWithEscape(true);
+        dialogBuilder.canCloseWithEscape(config.canCloseWithEscape);
         dialogBuilder.afterAction(DialogBase.DialogAfterAction.CLOSE);
 
         dialogBuilder.addBody(DialogBody.plainMessage(Component.newline()

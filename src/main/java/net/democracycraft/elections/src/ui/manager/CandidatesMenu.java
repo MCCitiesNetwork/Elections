@@ -54,10 +54,6 @@ public class CandidatesMenu extends ChildMenuImp {
         public String removedMsg = "<yellow>Candidate removed.</yellow>";
         public String removeFailedMsg = "<red><bold>Could not remove candidate.</bold></red>";
         public String nameLabel = "<aqua>Candidate name</aqua>";
-        /**
-         * Label for the optional candidate party input. This field may be empty when adding a
-         * candidate; the service will accept null/empty party values.
-         */
         public String partyLabel = "<aqua>Candidate party (optional)</aqua>";
         public String addBtn = "<green><bold>Add</bold></green>";
         public String nameEmptyMsg = "<red><bold>Name cannot be empty.</bold></red>";
@@ -68,6 +64,8 @@ public class CandidatesMenu extends ChildMenuImp {
         /** Loading dialog title and message while adding/removing. */
         public String loadingTitle = "<gold><bold>Updating</bold></gold>";
         public String loadingMessage = "<gray><italic>Applying candidate changes…</italic></gray>";
+        /** Whether the dialog can be closed with Escape. */
+        public boolean canCloseWithEscape = true;
         public Config() {}
 
         public static void loadConfig() {
@@ -84,7 +82,7 @@ public class CandidatesMenu extends ChildMenuImp {
 
         AutoDialog.Builder dialogBuilder = getAutoDialogBuilder();
         dialogBuilder.title(miniMessage(config.title, Map.of("%election_id%", String.valueOf(electionId))));
-        dialogBuilder.canCloseWithEscape(true);
+        dialogBuilder.canCloseWithEscape(config.canCloseWithEscape);
         dialogBuilder.afterAction(DialogBase.DialogAfterAction.CLOSE);
 
         if (election == null || election.getCandidates().isEmpty()) {

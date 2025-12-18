@@ -73,6 +73,7 @@ public class PreferentialBallotMenu extends ChildMenuImp {
         public String candidateSliderLabelFormat = "<white>%candidate_name%</white> <gray>(%candidate_party%)</gray> <gray> | Current: </gray>";
         /** Text used when a candidate currently has no rank assigned. */
         public String notRankedText = "Not ranked";
+        public boolean canCloseWithEscape = true;
         public Config() {}
 
         public static void loadConfig() {
@@ -85,9 +86,10 @@ public class PreferentialBallotMenu extends ChildMenuImp {
     private Dialog build() {
         Optional<Election> optionalElection = electionsService.getElectionSnapshot(electionId);
         AutoDialog.Builder dialogBuilder = getAutoDialogBuilder();
+
         var menuYml = getOrCreateMenuYml(Config.class, getMenuConfigFileName(), new Config().yamlHeader);
         Config config = menuYml.loadOrCreate(Config::new);
-
+        dialogBuilder.canCloseWithEscape(config.canCloseWithEscape);
         if (optionalElection.isEmpty()) {
             dialogBuilder.title(miniMessage(config.titleFallback));
             dialogBuilder.addBody(DialogBody.plainMessage(miniMessage(config.notFound)));
@@ -239,7 +241,22 @@ public class PreferentialBallotMenu extends ChildMenuImp {
             session.clearAll();
             new PreferentialBallotMenu(context.player(), getParentMenu(), electionsService, electionId).open();
         });
-        dialogBuilder.button(miniMessage(config.backBtn), context -> getParentMenu().open());
+
+        dialogBuilder.buttonWithPlayer(miniMessage(config.backBtn), null, (playerActor, response) -> {
+            for (Map.Entry<String, Integer> entry : sliderKeyToCandidateId.entrySet()) {
+                String key = entry.getKey();
+                Integer candidateId = entry.getValue();
+                Float v = response.getFloat(key);
+                if (v == null) continue;
+                int rank = Math.round(v);
+                if (rank >= 1 && rank <= maxRank) {
+                    session.setRank(candidateId, rank);
+                } else {
+                    session.clearRank(candidateId);
+                }
+            }
+            getParentMenu().open();
+        });
 
         return dialogBuilder.build();
     }

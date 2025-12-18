@@ -62,9 +62,11 @@ public class CandidateVoteMenu extends ChildMenuImp {
         /** Sound to play on successful save (selection or rank). */
         public SoundSpec successSound = new SoundSpec();
         /** YAML header describing placeholders available. */
-        public String yamlHeader = "CandidateVoteMenu configuration. Placeholders: %candidate_name%, %candidate_party%, %max%, %rank%.";
+        public String yamlHeader = "CandidateVoteMenu configuration. Placeholders: %candidate_name%, %candidate_party%, %max%, %rank%. ";
         /** Label to use when a candidate has no party set (null/blank). */
         public String partyUnknown = "Independent";
+        /** Whether the dialog can be closed with Escape. */
+        public boolean canCloseWithEscape = true;
         public Config() {}
 
         public static void loadConfig() {
@@ -106,7 +108,7 @@ public class CandidateVoteMenu extends ChildMenuImp {
         cph.put("%candidate_party%", party);
 
         dialogBuilder.title(miniMessage(applyPlaceholders(config.candidateTitleFormat, cph), null));
-        dialogBuilder.canCloseWithEscape(true);
+        dialogBuilder.canCloseWithEscape(config.canCloseWithEscape);
         dialogBuilder.afterAction(DialogBase.DialogAfterAction.CLOSE);
 
         HeadUtil.updateHeadItemBytesAsync(electionsService, electionId, candidate.getId(), candidate.getName());
@@ -159,7 +161,22 @@ public class CandidateVoteMenu extends ChildMenuImp {
             dialogBuilder.button(miniMessage(config.clearRankBtn), context -> { session.clearRank(candidateId); new CandidateListMenu(context.player(), getParentMenu(), electionsService, electionId).open(); });
         }
 
-        dialogBuilder.button(miniMessage(config.backBtn), context -> new CandidateListMenu(context.player(), getParentMenu(), electionsService, electionId).open());
+        dialogBuilder.buttonWithPlayer(miniMessage(config.backBtn), null, (playerActor, response) -> {
+            if (system == VotingSystem.BLOCK) {
+                String selectKey = "SEL_" + candidateId;
+                Boolean value = response.getBoolean(selectKey);
+                if (value != null) session.setSelected(candidateId, value);
+            } else {
+                String rankKey = "RANK_" + candidateId;
+                Float value = response.getFloat(rankKey);
+                if (value != null) {
+                    int maxRank = Math.max(1, candidates.size());
+                    int rank = Math.round(value);
+                    if (rank >= 1 && rank <= maxRank) session.setRank(candidateId, rank);
+                }
+            }
+            new CandidateListMenu(playerActor, getParentMenu(), electionsService, electionId).open();
+        });
         return dialogBuilder.build();
     }
 }

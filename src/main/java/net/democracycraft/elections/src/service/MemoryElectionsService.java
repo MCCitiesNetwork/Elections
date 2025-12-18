@@ -35,9 +35,14 @@ public class MemoryElectionsService implements ElectionsService {
 
     // Snapshot API
     @Override
-    public synchronized List<Election> listElectionsSnapshot() { return listElections(); }
+    public synchronized List<Election> listElectionsSnapshot() {
+        return listElections();
+    }
+
     @Override
-    public synchronized Optional<Election> getElectionSnapshot(int id) { return getElection(id); }
+    public synchronized Optional<Election> getElectionSnapshot(int id) {
+        return getElection(id);
+    }
 
     // Legacy synchronous helpers (no longer overriding interface)
     public synchronized Election createElection(String title, VotingSystem system, int minimumVotes, RequirementsDto requirements, String actor) {
@@ -96,6 +101,14 @@ public class MemoryElectionsService implements ElectionsService {
         int old = dto.getMinimumVotes();
         dto.setMinimumVotes(newMin);
         dto.addStatusChange(new StatusChangeDto(now(), StateChangeType.MINIMUM_CHANGED, actor, "old=" + old + ",new=" + effectiveNewMin));
+        // Auto-close if currently OPEN and new minimum exceeds number of candidates (system-agnostic)
+        if (dto.getStatus() == ElectionStatus.OPEN) {
+            int cands = dto.getCandidates().size();
+            if (effectiveNewMin > cands) {
+                dto.setStatus(ElectionStatus.CLOSED);
+                dto.addStatusChange(new StatusChangeDto(now(), StateChangeType.CLOSED, actor, "auto-closed: min>candidates"));
+            }
+        }
         return true;
     }
 
@@ -123,12 +136,10 @@ public class MemoryElectionsService implements ElectionsService {
         ElectionDto dto = elections.get(electionId);
         if (dto == null) return false;
         if (dto.getStatus() == ElectionStatus.OPEN) return true;
-        // Enforce Block system constraint: minVotes <= candidates
-        if (dto.getSystem() == VotingSystem.BLOCK) {
-            int min = Math.max(1, dto.getMinimumVotes());
-            int cands = dto.getCandidates().size();
-            if (min > cands) return false;
-        }
+        // Enforce constraint: minVotes <= candidates regardless of system
+        int min = Math.max(1, dto.getMinimumVotes());
+        int cands = dto.getCandidates().size();
+        if (min > cands) return false;
         dto.setStatus(ElectionStatus.OPEN);
         dto.addStatusChange(new StatusChangeDto(now(), StateChangeType.OPENED, actor, null));
         return true;

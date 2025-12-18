@@ -68,6 +68,8 @@ public class SystemAndMinimumMenu extends ChildMenuImp {
         /** Loading dialog title and message used for async actions here. */
         public String loadingTitle = "<gold><bold>Saving</bold></gold>";
         public String loadingMessage = "<gray><italic>Applying configuration…</italic></gray>";
+        /** Whether the dialog can be closed with Escape. */
+        public boolean canCloseWithEscape = true;
         public Config() {}
 
         public static void loadConfig() {
@@ -92,7 +94,7 @@ public class SystemAndMinimumMenu extends ChildMenuImp {
 
         AutoDialog.Builder dialogBuilder = getAutoDialogBuilder();
         dialogBuilder.title(miniMessage(config.title, placeholders));
-        dialogBuilder.canCloseWithEscape(true);
+        dialogBuilder.canCloseWithEscape(config.canCloseWithEscape);
         dialogBuilder.afterAction(DialogBase.DialogAfterAction.CLOSE);
 
         dialogBuilder.addBody(DialogBody.plainMessage(
@@ -114,22 +116,15 @@ public class SystemAndMinimumMenu extends ChildMenuImp {
             confirm.button(miniMessage(config.confirmBtn, placeholders), c2 -> {
                 // Perform the update asynchronously to avoid DB on main thread
                 new LoadingMenu(c2.player(), getParentMenu(), miniMessage(config.loadingTitle, placeholders), miniMessage(config.loadingMessage, placeholders)).open();
-                new BukkitRunnable() {
+                new org.bukkit.scheduler.BukkitRunnable() {
                     @Override
                     public void run() {
                         electionsService.setSystem(electionId, next, c2.player().getName());
-                        new BukkitRunnable() {
+                        new org.bukkit.scheduler.BukkitRunnable() {
                             @Override
                             public void run() {
                                 c2.player().sendMessage(miniMessage(config.systemSetMsgPrefix, placeholders)
                                         .append(miniMessage("<white><bold>" + next.name() + "</bold></white>", null)));
-                                // Warn if switching to BLOCK and min votes > candidates
-                                Election e2 = electionsService.getElection(electionId).orElse(null);
-                                if (e2 != null && next == VotingSystem.BLOCK) {
-                                    if (Math.max(1, e2.getMinimumVotes()) > e2.getCandidates().size()) {
-                                        c2.player().sendMessage(miniMessage(config.blockMinWarn));
-                                    }
-                                }
                                 new ElectionManagerMenu(c2.player(), electionsService, electionId).open();
                             }
                         }.runTask(Elections.getInstance());
@@ -163,14 +158,25 @@ public class SystemAndMinimumMenu extends ChildMenuImp {
             final int minVotesFinal = minVotes;
             // Run DB write asynchronously, then update UI on main
             new LoadingMenu(playerActor, getParentMenu(), miniMessage(config.loadingTitle, placeholders), miniMessage(config.loadingMessage, placeholders)).open();
-            new BukkitRunnable() {
+            new org.bukkit.scheduler.BukkitRunnable() {
                 @Override
                 public void run() {
                     electionsService.setMinimumVotes(electionId, minVotesFinal, playerActor.getName());
-                    new BukkitRunnable() {
+                    Election e2 = electionsService.getElection(electionId).orElse(null);
+                    boolean showWarn = false;
+                    if (e2 != null) {
+                        int cands = e2.getCandidates().size();
+                        int minRequired = Math.max(1, minVotesFinal);
+                        showWarn = minRequired > cands;
+                    }
+                    final boolean warn = showWarn;
+                    new org.bukkit.scheduler.BukkitRunnable() {
                         @Override
                         public void run() {
                             playerActor.sendMessage(miniMessage(applyPlaceholders(config.minUpdatedMsg, Map.of("%min_votes%", String.valueOf(minVotesFinal))), null));
+                            if (warn) {
+                                playerActor.sendMessage(miniMessage(config.blockMinWarn));
+                            }
                             new ElectionManagerMenu(playerActor, electionsService, electionId).open();
                         }
                     }.runTask(Elections.getInstance());

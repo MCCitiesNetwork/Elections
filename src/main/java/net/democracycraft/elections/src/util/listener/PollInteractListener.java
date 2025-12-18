@@ -8,6 +8,8 @@ import net.democracycraft.elections.api.service.ElectionsService;
 import net.democracycraft.elections.src.data.ElectionStatus;
 import net.democracycraft.elections.src.data.RequirementsDto;
 import net.democracycraft.elections.src.ui.vote.BallotIntroMenu;
+import net.democracycraft.elections.src.util.PlayerPlaytimeUtil;
+import net.democracycraft.elections.src.vote.VoteSessionManager;
 import org.bukkit.Location;
 import org.bukkit.World;
 import org.bukkit.block.Block;
@@ -25,13 +27,7 @@ import java.util.Optional;
  * Bukkit listener that opens the ballot UI when a player right-clicks a block
  * registered as a polling booth (poll) for an open election.
  */
-public class PollInteractListener implements Listener {
-
-    private final ElectionsService electionsService;
-
-    public PollInteractListener(ElectionsService svc) {
-        this.electionsService = svc;
-    }
+public record PollInteractListener(ElectionsService electionsService) implements Listener {
 
     @EventHandler(priority = EventPriority.NORMAL, ignoreCancelled = true)
     public void onInteract(PlayerInteractEvent event) {
@@ -64,6 +60,17 @@ public class PollInteractListener implements Listener {
                 }
             }
         }
+        // Active playtime validation if applicable
+        if (req != null) {
+            long minMinutes = req.minActivePlaytimeMinutes();
+            if (minMinutes > 0) {
+                long playedMinutes = PlayerPlaytimeUtil.getPlaytimeMinutes(player);
+                if (playedMinutes < minMinutes) {
+                    player.sendMessage("You are not eligible to vote: requires at least " + minMinutes + " minutes of active playtime.");
+                    return;
+                }
+            }
+        }
 
         // Register voter off the main thread to avoid DB blocking.
         new BukkitRunnable() {
@@ -80,7 +87,7 @@ public class PollInteractListener implements Listener {
                             player.sendMessage("You have already submitted a ballot for this election.");
                             return;
                         }
-                        net.democracycraft.elections.src.vote.VoteSessionManager.open(player.getUniqueId(), election.getId(), voter.getId(), latest.getSystem());
+                        VoteSessionManager.open(player.getUniqueId(), election.getId(), voter.getId(), latest.getSystem());
                         new BallotIntroMenu(player, electionsService, election.getId()).open();
                     }
                 }.runTask(Elections.getInstance());

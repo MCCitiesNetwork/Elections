@@ -108,6 +108,8 @@ public class CandidateListMenu extends ChildMenuImp {
         public String clearConfirmTitle = "<yellow><bold>Clear all selections?</bold></yellow>";
         /** Label to use when a candidate has no party set (null/blank). */
         public String partyUnknown = "Independent";
+        /** Whether the dialog can be closed with Escape. */
+        public boolean canCloseWithEscape = true;
         public Config() {}
 
         public static void loadConfig() {
@@ -138,7 +140,7 @@ public class CandidateListMenu extends ChildMenuImp {
         );
 
         dialogBuilder.title(miniMessage(config.titleFormat, placeholders));
-        dialogBuilder.canCloseWithEscape(true);
+        dialogBuilder.canCloseWithEscape(config.canCloseWithEscape);
         dialogBuilder.afterAction(DialogBase.DialogAfterAction.CLOSE);
 
         if (system == VotingSystem.BLOCK) {

@@ -43,6 +43,8 @@ public class ErrorMenu extends ChildMenuImp {
          * configuration file.
          */
         public String yamlHeader = "ErrorMenu configuration. Placeholders: %detail%.";
+        /** Whether the dialog can be closed with Escape. */
+        public boolean canCloseWithEscape = true;
 
         public Config() {
         }
@@ -90,12 +92,12 @@ public class ErrorMenu extends ChildMenuImp {
      * @return dialog instance ready to be shown
      */
     private Dialog build() {
-        AutoDialog.Builder builder = getAutoDialogBuilder();
         var menuYml = getOrCreateMenuYml(Config.class, getMenuConfigFileName(), new Config().yamlHeader);
         Config config = menuYml.loadOrCreate(Config::new);
+        AutoDialog.Builder builder = getAutoDialogBuilder();
 
         builder.title(MiniMessageUtil.parseOrPlain(config.title));
-        builder.canCloseWithEscape(true);
+        builder.canCloseWithEscape(config.canCloseWithEscape);
         builder.afterAction(DialogBase.DialogAfterAction.CLOSE);
 
         if (messages.isEmpty()) {

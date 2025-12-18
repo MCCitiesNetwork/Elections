@@ -3,6 +3,7 @@ package net.democracycraft.elections.src.ui.manager;
 import io.papermc.paper.dialog.Dialog;
 import io.papermc.paper.registry.data.dialog.DialogBase;
 import io.papermc.paper.registry.data.dialog.body.DialogBody;
+import io.papermc.paper.registry.data.dialog.input.DialogInput;
 import net.democracycraft.elections.api.model.Election;
 import net.democracycraft.elections.api.service.ElectionsService;
 import net.democracycraft.elections.src.ui.ParentMenuImp;
@@ -61,6 +62,8 @@ public class ElectionListMenu extends ParentMenuImp {
         public String searchDialogTitle = "<gray>Search elections</gray>";
         public String searchQueryLabel = "<gray>Query</gray>";
         public String searchApplyBtn = "<green>Apply</green>";
+        /** Whether the dialog can be closed with Escape. */
+        public boolean canCloseWithEscape = true;
         public Config() {}
 
         public static void loadConfig() {
@@ -75,7 +78,7 @@ public class ElectionListMenu extends ParentMenuImp {
 
         AutoDialog.Builder dialogBuilder = getAutoDialogBuilder();
         dialogBuilder.title(miniMessage(config.title, null));
-        dialogBuilder.canCloseWithEscape(true);
+        dialogBuilder.canCloseWithEscape(config.canCloseWithEscape);
         dialogBuilder.afterAction(DialogBase.DialogAfterAction.CLOSE);
 
         List<Election> elections = new ArrayList<>(electionsService.listElections());
@@ -113,8 +116,9 @@ public class ElectionListMenu extends ParentMenuImp {
         dialogBuilder.button(miniMessage(config.searchBtn, null), context -> {
             AutoDialog.Builder searchDlg = getAutoDialogBuilder();
             searchDlg.title(miniMessage(config.searchDialogTitle, null));
-            var input = io.papermc.paper.registry.data.dialog.input.DialogInput.text("Q", miniMessage(config.searchQueryLabel, null)).labelVisible(true).build();
+            var input = DialogInput.text("Q", miniMessage(config.searchQueryLabel, null)).labelVisible(true).build();
             searchDlg.addInput(input);
+            searchDlg.canCloseWithEscape(config.canCloseWithEscape);
             searchDlg.buttonWithPlayer(miniMessage(config.searchApplyBtn, null), null, (p, response) -> {
                 String q = response.getText("Q");
                 new ElectionListMenu(p, electionsService, 0, q).open();

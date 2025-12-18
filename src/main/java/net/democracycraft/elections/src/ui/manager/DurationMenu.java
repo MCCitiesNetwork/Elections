@@ -70,6 +70,8 @@ public class DurationMenu extends ChildMenuImp {
         /** Loading dialog title and message while saving/clearing. */
         public String loadingTitle = "<gold><bold>Saving</bold></gold>";
         public String loadingMessage = "<gray><italic>Applying duration changes…</italic></gray>";
+        /** Whether the dialog can be closed with Escape. */
+        public boolean canCloseWithEscape = true;
         public Config() {}
 
         public static void loadConfig() {
@@ -95,7 +97,7 @@ public class DurationMenu extends ChildMenuImp {
 
         AutoDialog.Builder dialogBuilder = getAutoDialogBuilder();
         dialogBuilder.title(miniMessage(config.title, placeholders));
-        dialogBuilder.canCloseWithEscape(true);
+        dialogBuilder.canCloseWithEscape(config.canCloseWithEscape);
         dialogBuilder.afterAction(DialogBase.DialogAfterAction.CLOSE);
 
         dialogBuilder.addBody(DialogBody.plainMessage(miniMessage(config.description, placeholders)));

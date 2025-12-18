@@ -44,6 +44,7 @@ public class ElectionCreateRequirementsMenu extends ChildMenuImp {
         public float playtimeMin = 0f;
         public float playtimeMax = 1_000_000f;
         public float playtimeStep = 1f;
+        public boolean canCloseWithEscape = true;
         public Config() {}
 
         public static void loadConfig() {
@@ -62,19 +63,23 @@ public class ElectionCreateRequirementsMenu extends ChildMenuImp {
         dialogBuilder.title(miniMessage(config.title, null));
         dialogBuilder.canCloseWithEscape(true);
         dialogBuilder.afterAction(DialogBase.DialogAfterAction.CLOSE);
+        dialogBuilder.canCloseWithEscape(config.canCloseWithEscape);
 
         dialogBuilder.addBody(DialogBody.plainMessage(miniMessage(config.description, null)));
 
         PermissionNodesStore store = Elections.getInstance().getPermissionNodesStore();
         PermissionNodesDto nodesDto = store.get();
-        List<Permission> filteredPermissions = PermissionScanner.getPermissionsForNodesPrefix(nodesDto);
-        Map<String, Permission> permissionsByName = new LinkedHashMap<>();
-        for (Permission permission : filteredPermissions) permissionsByName.put(permission.getName(), permission);
-
-        for (Permission permission : permissionsByName.values()) {
-            String key = permKey(permission.getName());
-            boolean initial = draft.requirements.permissions().contains(permission.getName());
-            dialogBuilder.addInput(DialogInput.bool(key, miniMessage("<gray>" + permission.getName() + "</gray>")).initial(initial).build());
+        // Build expanded node strings including hierarchical prefixes
+        List<String> expandedNodes = PermissionScanner.buildExpandedNodes(nodesDto);
+        LinkedHashSet<String> nodeSet = new LinkedHashSet<>(expandedNodes);
+        // Map node -> key
+        Map<String, String> nodeToKey = new LinkedHashMap<>();
+        for (String node : nodeSet) {
+            if (node == null || node.isBlank()) continue;
+            String key = permKey(node);
+            nodeToKey.put(node, key);
+            boolean initial = draft.requirements.permissions().contains(node);
+            dialogBuilder.addInput(DialogInput.bool(key, miniMessage("<gray>" + node + "</gray>")).initial(initial).build());
         }
 
         dialogBuilder.addInput(DialogInput.numberRange(Keys.PLAYTIME.name(), miniMessage(config.playtimeLabel, null), config.playtimeMin, config.playtimeMax)
@@ -85,10 +90,11 @@ public class ElectionCreateRequirementsMenu extends ChildMenuImp {
 
         dialogBuilder.buttonWithPlayer(miniMessage(config.nextBtn, null), null, (playerActor, response) -> {
             List<String> newPerms = new ArrayList<>();
-            for (Permission permission : permissionsByName.values()) {
-                String key = permKey(permission.getName());
+            for (Map.Entry<String, String> e : nodeToKey.entrySet()) {
+                String node = e.getKey();
+                String key = e.getValue();
                 Boolean selected = response.getBoolean(key);
-                if (selected != null && selected) newPerms.add(permission.getName());
+                if (selected != null && selected) newPerms.add(node);
             }
             Long minutes = null;
             String text = response.getText(Keys.PLAYTIME_TEXT.name());

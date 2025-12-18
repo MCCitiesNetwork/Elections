@@ -45,6 +45,8 @@ public class ElectionCreateDurationMenu extends ChildMenuImp {
         public float minutesMin = 0f;
         public float minutesMax = 59f;
         public float minutesStep = 1f;
+        /** Whether the dialog can be closed with Escape. */
+        public boolean canCloseWithEscape = true;
         public Config() {}
 
         public static void loadConfig() {
@@ -59,7 +61,7 @@ public class ElectionCreateDurationMenu extends ChildMenuImp {
 
         AutoDialog.Builder dialogBuilder = getAutoDialogBuilder();
         dialogBuilder.title(miniMessage(config.title));
-        dialogBuilder.canCloseWithEscape(true);
+        dialogBuilder.canCloseWithEscape(config.canCloseWithEscape);
         dialogBuilder.afterAction(DialogBase.DialogAfterAction.CLOSE);
 
         dialogBuilder.addBody(DialogBody.plainMessage(miniMessage(config.description)));

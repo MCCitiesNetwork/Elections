@@ -58,6 +58,8 @@ public class TitleEditMenu extends ChildMenuImp {
         /** Loading dialog title and message while saving. */
         public String loadingTitle = "<gold><bold>Saving</bold></gold>";
         public String loadingMessage = "<gray><italic>Saving changes…</italic></gray>";
+        /** Whether the dialog can be closed with Escape. */
+        public boolean canCloseWithEscape = true;
         public Config() {}
 
         public static void loadConfig() {
@@ -77,7 +79,7 @@ public class TitleEditMenu extends ChildMenuImp {
 
         AutoDialog.Builder dialogBuilder = getAutoDialogBuilder();
         dialogBuilder.title(miniMessage(config.title, placeholders));
-        dialogBuilder.canCloseWithEscape(true);
+        dialogBuilder.canCloseWithEscape(config.canCloseWithEscape);
         dialogBuilder.afterAction(DialogBase.DialogAfterAction.CLOSE);
         if (election != null) {
             Component currentTitle = miniMessage(config.currentPrefix, placeholders)

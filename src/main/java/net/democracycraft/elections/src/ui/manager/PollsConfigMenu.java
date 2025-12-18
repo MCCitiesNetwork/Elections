@@ -75,6 +75,8 @@ public class PollsConfigMenu extends ChildMenuImp {
         /** Loading dialog title and message while defining/removing. */
         public String loadingTitle = "<gold><bold>Updating</bold></gold>";
         public String loadingMessage = "<gray><italic>Updating polls…</italic></gray>";
+        /** Whether the dialog can be closed with Escape. */
+        public boolean canCloseWithEscape = true;
         public Config() {}
 
         public static void loadConfig() {
@@ -89,7 +91,7 @@ public class PollsConfigMenu extends ChildMenuImp {
 
         AutoDialog.Builder dialogBuilder = getAutoDialogBuilder();
         dialogBuilder.title(miniMessage(config.title, null));
-        dialogBuilder.canCloseWithEscape(true);
+        dialogBuilder.canCloseWithEscape(config.canCloseWithEscape);
         dialogBuilder.afterAction(DialogBase.DialogAfterAction.CLOSE);
 
         int polls = electionsService.getElection(electionId).map(e -> e.getPolls().size()).orElse(0);

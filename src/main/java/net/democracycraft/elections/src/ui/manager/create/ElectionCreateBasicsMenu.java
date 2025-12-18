@@ -43,6 +43,8 @@ public class ElectionCreateBasicsMenu extends ChildMenuImp {
         public String cancelBtn = "<red><bold>Cancel</bold></red>";
         public String emptyMsg = "<red><bold>Title cannot be empty.</bold></red>";
         public String yamlHeader = "ElectionCreateBasicsMenu configuration. Placeholders: %player%.";
+        /** Whether the dialog can be closed with Escape. */
+        public boolean canCloseWithEscape = true;
         public Config() {}
 
         public static void loadConfig() {
@@ -57,7 +59,7 @@ public class ElectionCreateBasicsMenu extends ChildMenuImp {
 
         AutoDialog.Builder dialogBuilder = getAutoDialogBuilder();
         dialogBuilder.title(miniMessage(config.title));
-        dialogBuilder.canCloseWithEscape(true);
+        dialogBuilder.canCloseWithEscape(config.canCloseWithEscape);
         dialogBuilder.afterAction(DialogBase.DialogAfterAction.CLOSE);
 
         dialogBuilder.addBody(DialogBody.plainMessage(miniMessage(config.instruction)));
