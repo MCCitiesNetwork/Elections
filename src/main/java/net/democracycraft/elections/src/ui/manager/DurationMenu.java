@@ -54,7 +54,7 @@ public class DurationMenu extends ChildMenuImp {
         public String minutesLabel = "<aqua>Minutes</aqua>";
         public String saveBtn = "<green><bold>Save</bold></green>";
         public String clearedBtn = "<yellow>Clear (Never)</yellow>";
-        public String backBtn = "<gray>Back</gray>";
+        public String backBtn = "<dark_gray>Back</dark_gray>";
         public String updatedMsg = "<green><bold>Duration updated.</bold></green>";
         public String clearedMsg = "<yellow>Duration cleared.</yellow>";
         public String yamlHeader = "DurationMenu configuration. Placeholders: %player%, %election_id%, %days%, %hours%, %minutes%.";

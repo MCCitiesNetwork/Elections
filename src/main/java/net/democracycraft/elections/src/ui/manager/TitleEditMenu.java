@@ -51,7 +51,7 @@ public class TitleEditMenu extends ChildMenuImp {
         public String currentTitleFormat = "<white><bold>%election_title%</bold></white>";
         public String inputLabel = "<aqua>Title</aqua>";
         public String saveBtn = "<green><bold>Save</bold></green>";
-        public String backBtn = "<gray>Back</gray>";
+        public String backBtn = "<dark_gray>Back</dark_gray>";
         public String emptyError = "<red><bold>Title cannot be empty.</bold></red>";
         public String updatedMsg = "<green><bold>Title updated.</bold></green>";
         public String yamlHeader = "TitleEditMenu configuration. Placeholders: %player%, %election_id%, %election_title%.";

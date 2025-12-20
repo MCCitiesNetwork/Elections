@@ -55,7 +55,7 @@ public class SimpleBlockBallotMenu extends ChildMenuImp {
         public String titleFormat = "<gold><bold>%election_title% Ballot (Simple Block)</bold></gold>";
         public String instruction = "<gray>Select exactly <white><bold>%min%</bold></white> candidates.</gray>";
         /** Label shown next to state when candidate is selected. Placeholder: %candidate_name%, %candidate_party%. */
-        public String optionSelected = "<gray>[Selected]</gray>";
+        public String optionSelected = "<dark_gray>[Selected]</dark_gray>";
         /** Label shown next to state when candidate is not selected. Placeholder: %candidate_name%, %candidate_party%. */
         public String optionNotSelected = " ";
         public String selectedLabel = "<aqua>Selected: </aqua>";
@@ -75,7 +75,7 @@ public class SimpleBlockBallotMenu extends ChildMenuImp {
         public SoundSpec successSound = new SoundSpec();
         public String valueGrayFormat = "<gray>%value%</gray>";
         /** Label format for each candidate row. Placeholders: %candidate_name%, %candidate_party%. */
-        public String candidateLabelFormat = "<white>%candidate_name%</white> <gray>(%candidate_party%)</gray>";
+        public String candidateLabelFormat = "<white>%candidate_name%</white><dark_gray>%candidate_party%</dark_gray>";
         /** Label to use when a candidate has no party set (null/blank). */
         public String partyUnknown = "Independent";
         public boolean canCloseWithEscape = true;
@@ -130,11 +130,12 @@ public class SimpleBlockBallotMenu extends ChildMenuImp {
             boolean selected = session.isSelected(c.getId());
             String party = c.getParty();
             if (party == null || party.isBlank()) party = config.partyUnknown;
+            String displayParty = formatCandidateParty(c.getName(), party);
             List<SingleOptionDialogInput.OptionEntry> entries = new java.util.ArrayList<>();
-            entries.add(SingleOptionDialogInput.OptionEntry.create("0", miniMessage(applyPlaceholders(config.optionNotSelected, Map.of("%candidate_name%", c.getName(), "%candidate_party%", party)), null), !selected));
-            entries.add(SingleOptionDialogInput.OptionEntry.create("1", miniMessage(applyPlaceholders(config.optionSelected, Map.of("%candidate_name%", c.getName(), "%candidate_party%", party)), null), selected));
+            entries.add(SingleOptionDialogInput.OptionEntry.create("0", miniMessage(applyPlaceholders(config.optionNotSelected, Map.of("%candidate_name%", formatCandidateName(c.getName()), "%candidate_party%", displayParty)), null), !selected));
+            entries.add(SingleOptionDialogInput.OptionEntry.create("1", miniMessage(applyPlaceholders(config.optionSelected, Map.of("%candidate_name%", formatCandidateName(c.getName()), "%candidate_party%", displayParty)), null), selected));
             dialogBuilder.addInput(DialogInput
-                    .singleOption(key, miniMessage(applyPlaceholders(config.candidateLabelFormat, Map.of("%candidate_name%", c.getName(), "%candidate_party%", party)), null), entries)
+                    .singleOption(key, miniMessage(applyPlaceholders(config.candidateLabelFormat, Map.of("%candidate_name%", formatCandidateName(c.getName()), "%candidate_party%", displayParty)), null), entries)
                     .build());
         }
 

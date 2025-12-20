@@ -55,7 +55,7 @@ public class RequirementsMenu extends ChildMenuImp {
         public String playtimeLabel = "<aqua>Active playtime (minutes)</aqua>";
         public String fineAdjustLabel = "<aqua>Fine adjust (minutes)</aqua>";
         public String saveBtn = "<green><bold>Save</bold></green>";
-        public String backBtn = "<gray>Back</gray>";
+        public String backBtn = "<dark_gray>Back</dark_gray>";
         public String updatedMsg = "<green><bold>Requirements updated.</bold></green>";
         public String yamlHeader = "RequirementsMenu configuration. Placeholders: %player%, %election_id%.";
         public float playtimeMin = 0f;
@@ -108,7 +108,7 @@ public class RequirementsMenu extends ChildMenuImp {
             String key = permKey(node);
             nodeToKey.put(node, key);
             boolean initial = currentPerms.contains(node);
-            dialogBuilder.addInput(DialogInput.bool(key, miniMessage("<gray>" + node + "</gray>")).initial(initial).build());
+            dialogBuilder.addInput(DialogInput.bool(key, miniMessage("<dark_gray>" + node + "</dark_gray>")).initial(initial).build());
         }
 
         dialogBuilder.addInput(DialogInput.numberRange(Keys.PLAYTIME.name(), miniMessage(config.playtimeLabel, placeholders), config.playtimeMin, config.playtimeMax).step(config.playtimeStep).initial((float) currentMinutes).build());

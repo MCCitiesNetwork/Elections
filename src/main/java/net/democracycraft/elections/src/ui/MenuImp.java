@@ -99,23 +99,64 @@ public abstract class MenuImp implements Menu {
      *
      * @param template template string that may contain placeholders like %player%
      * @param extras   additional placeholders, may be null
-     * @return resolved string (never null)
+     * @return component with resolved placeholders
      */
-    protected String applyPlaceholders(String template, @Nullable Map<String, String> extras) {
+    protected Component miniMessage(String template, @Nullable Map<String, String> extras) {
+        return MiniMessageUtil.parseOrPlain(template, extras == null ? placeholders() : merge(placeholders(), extras));
+    }
+
+    /**
+     * Formats a candidate name with special coloring for specific keywords.
+     * "Aye" -> Green Bold
+     * "Nay" -> Red Bold
+     *
+     * @param name the candidate name
+     * @return the formatted name as a MiniMessage string, or the original name
+     */
+    protected String formatCandidateName(String name) {
+        if (name == null) return "";
+        if (name.equalsIgnoreCase("aye")) {
+            return "<green><bold>Aye</bold></green>";
+        }
+        if (name.equalsIgnoreCase("nay")) {
+            return "<red><bold>Nay</bold></red>";
+        }
+        return name;
+    }
+
+    /**
+     * Formats the candidate party.
+     * If the candidate name is "Aye" or "Nay", the party is hidden (returns empty string).
+     * Otherwise, returns the provided party string.
+     *
+     * @param name  the candidate name
+     * @param party the candidate party (already resolved with defaults if needed)
+     * @return the formatted party or empty string
+     */
+    protected String formatCandidateParty(String name, String party) {
+        if (name != null && (name.equalsIgnoreCase("aye") || name.equalsIgnoreCase("nay"))) {
+                        if (party.equalsIgnoreCase("independent")) {
+
+                return "";
+            }
+
+        }
+        return party;
+    }
+
+    private Map<String, String> merge(Map<String, String> base, Map<String, String> extras) {
+        Map<String, String> merged = new ConcurrentHashMap<>(base);
+        merged.putAll(extras);
+        return merged;
+    }
+
+    protected String applyPlaceholders(String template, Map<String, String> placeholdersP) {
         if (template == null) return "";
         String resolved = template;
         // Merge extras over common values
-        Map<String, String> common = placeholders();
-        if (extras != null) {
-            // First apply extras for menu-specific values
-            for (Map.Entry<String, String> entry : extras.entrySet()) {
-                String keyToken = entry.getKey();
-                String valueText = entry.getValue() == null ? "" : entry.getValue();
-                resolved = resolved.replace(keyToken, valueText);
-            }
-        }
-        // Then apply common placeholders
-        for (Map.Entry<String, String> entry : common.entrySet()) {
+        Map<String, String> all = placeholdersP == null ? placeholders() : merge(placeholders(), placeholdersP);
+        // Then apply all placeholders
+        for (Map.Entry<String, String> entry : all.entrySet()) {
             String keyToken = entry.getKey();
             String valueText = entry.getValue() == null ? "" : entry.getValue();
             resolved = resolved.replace(keyToken, valueText);
@@ -130,15 +171,5 @@ public abstract class MenuImp implements Menu {
      */
     protected Component miniMessage(String text) {
         return MiniMessageUtil.parseOrPlain(text);
-    }
-
-    /**
-     * Applies placeholders then parses MiniMessage safely, with fallback to plain text.
-     * @param template MiniMessage template string
-     * @param placeholdersMap placeholders map (may be null)
-     * @return component
-     */
-    protected Component miniMessage(String template, @Nullable Map<String, String> placeholdersMap) {
-        return MiniMessageUtil.parseOrPlain(applyPlaceholders(template, placeholdersMap));
     }
 }

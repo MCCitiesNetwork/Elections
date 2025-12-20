@@ -56,10 +56,10 @@ public class SystemAndMinimumMenu extends ChildMenuImp {
         public String systemSetMsgPrefix = "<gray>System set to </gray>";
         public String saveMinBtn = "<green><bold>Save minimum</bold></green>";
         public String minUpdatedMsg = "<green><bold>Minimum votes updated.</bold></green>";
-        public String backBtn = "<gray>Back</gray>";
+        public String backBtn = "<dark_gray>Back</dark_gray>";
         public String confirmCycleTitle = "<yellow><bold>Change voting system?</bold></yellow>";
         public String confirmBtn = "<yellow>Confirm</yellow>";
-        public String cancelBtn = "<gray>Cancel</gray>";
+        public String cancelBtn = "<dark_gray>Cancel</dark_gray>";
         public String blockMinWarn = "<yellow>Warning: min votes is greater than number of candidates. Opening will be blocked until resolved.</yellow>";
         public String yamlHeader = "SystemAndMinimumMenu configuration. Placeholders: %player%, %election_id%, %system%, %min_votes%.";
         public float minVotesMin = 1f;

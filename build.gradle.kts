@@ -16,7 +16,6 @@ repositories {
 
 dependencies {
     compileOnly("io.papermc.paper:paper-api:1.21.8-R0.1-SNAPSHOT")
-    implementation("com.google.code.gson:gson:2.11.0")
     compileOnly("net.kyori:adventure-text-minimessage:4.17.0")
 }
 

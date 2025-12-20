@@ -49,7 +49,7 @@ public class ElectionPreviewMenu extends ChildMenuImp {
         public String candidatesLabel = "<aqua>Candidates: </aqua>";
         public String pollsLabel = "<aqua>Polls: </aqua>";
         public String openManagerBtn = "<yellow><bold>Open Manager</bold></yellow>";
-        public String backBtn = "<gray>Back</gray>";
+        public String backBtn = "<dark_gray>Back</dark_gray>";
         public String yamlHeader = "ElectionListItemMenu configuration. Placeholders: %id%, %title%, %status%, %voters%, %candidates%, %polls%.";
         /** Whether the dialog can be closed with Escape. */
         public boolean canCloseWithEscape = true;

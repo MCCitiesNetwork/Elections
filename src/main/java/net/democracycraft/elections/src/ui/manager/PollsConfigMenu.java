@@ -56,7 +56,7 @@ public class PollsConfigMenu extends ChildMenuImp {
         public String clickHint = "<gray>Click a block/head to define or remove a poll.</gray>";
         public String defineBtn = "<green><bold>Define Poll</bold></green>";
         public String undefineBtn = "<red><bold>Undefine Poll</bold></red>";
-        public String backBtn = "<gray>Back</gray>";
+        public String backBtn = "<dark_gray>Back</dark_gray>";
 
         public String definedMsg = "<green><bold>Defined poll at</bold></green> <white>%x%</white>,<white>%y%</white>,<white>%z%</white>";
         public String undefinedMsg = "<yellow>Undefined poll at</yellow> <white>%x%</white>,<white>%y%</white>,<white>%z%</white>";
@@ -69,7 +69,7 @@ public class PollsConfigMenu extends ChildMenuImp {
 
         public String confirmUndefineTitle = "<red><bold>Confirm undefine?</bold></red>";
         public String confirmBtn = "<red>Confirm</red>";
-        public String cancelBtn = "<gray>Cancel</gray>";
+        public String cancelBtn = "<dark_gray>Cancel</dark_gray>";
 
         public String yamlHeader = "PollsConfigMenu configuration. Placeholders: %player%, %polls_count%, %x%, %y%, %z%, %action%, %conflict_election_id%, %conflict_election_title%.";
         /** Loading dialog title and message while defining/removing. */

@@ -50,7 +50,6 @@ public class PreferentialBallotMenu extends ChildMenuImp {
         public String minPrefsLabel = "<aqua>Minimum preferences: </aqua>";
         public String instruction = "<gray>Check candidates and type an integer rank between 1 and <white><bold>%max%</bold></white>. Ranks must be unique.</gray>";
         public String submitBtn = "<green><bold>Submit</bold></green>";
-        public String missingRank = "<red><bold>Missing rank for a selected candidate.</bold></red>";
         public String invalidRank = "<red><bold>Invalid rank: %rank%</bold></red>";
         public String duplicateRank = "<red><bold>Duplicate rank: %rank%</bold></red>";
         public String selectAtLeast = "<red><bold>Select at least %min% preferences.</bold></red>";
@@ -70,7 +69,7 @@ public class PreferentialBallotMenu extends ChildMenuImp {
         /** Label to use when a candidate has no party set (null/blank). */
         public String partyUnknown = "Independent";
         /** Label for each candidate slider. Placeholders: %candidate_name%, %candidate_party%, %current_rank%. */
-        public String candidateSliderLabelFormat = "<white>%candidate_name%</white> <gray>(%candidate_party%)</gray> <gray> | Current: </gray>";
+        public String candidateSliderLabelFormat = "<white>%candidate_name%</white><dark_gray>%candidate_party%</dark_gray> <dark_gray> | Current: </dark_gray>";
         /** Text used when a candidate currently has no rank assigned. */
         public String notRankedText = "Not ranked";
         public boolean canCloseWithEscape = true;
@@ -139,8 +138,8 @@ public class PreferentialBallotMenu extends ChildMenuImp {
 
             // Build placeholders
             Map<String, String> cph = Map.of(
-                    "%candidate_name%", candidate.getName(),
-                    "%candidate_party%", party,
+                    "%candidate_name%", formatCandidateName(candidate.getName()),
+                    "%candidate_party%", formatCandidateParty(candidate.getName(), party),
                     "%current_rank%", currentRankLabel
             );
 

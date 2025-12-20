@@ -57,12 +57,12 @@ public class ElectionManagerMenu extends ParentMenuImp {
 
         public String ballotsSubmittedBtn = "<green><bold>Ballots submitted:</bold></green> <white>%ballots_count%</white>";
         public String editTitleBtn = "<yellow><bold>Edit Title</bold></yellow>";
-        public String pollsBtn = "<yellow><bold>Polls</bold></yellow> <gray>(%polls_count%)</gray>";
+        public String pollsBtn = "<yellow><bold>Polls</bold></yellow> <dark_gray>(%polls_count%)</dark_gray>";
         public String durationBtn = "<yellow><bold>Duration</bold></yellow>";
         public String statusBtn = "<yellow><bold>Status:</bold></yellow> <gray>%status%</gray>";
         public String systemAndMinimumBtn = "<yellow><bold>System & Minimum</bold></yellow>";
         public String ballotModeBtn = "<yellow><bold>Ballot Mode</bold></yellow> <gray>%ballot_mode%</gray>";
-        public String candidatesBtn = "<yellow><bold>Candidates</bold></yellow> <gray>(%candidates_count%)</gray>";
+        public String candidatesBtn = "<yellow><bold>Candidates</bold></yellow> <dark_gray>(%candidates_count%)</dark_gray>";
         public String requirementsBtn = "<yellow><bold>Requirements</bold></yellow>";
         public String deleteBtn = "<red><bold>Delete Election</bold></red>";
         public String deleteConfirmBtn = "<red><bold>Confirm Delete</bold></red>";

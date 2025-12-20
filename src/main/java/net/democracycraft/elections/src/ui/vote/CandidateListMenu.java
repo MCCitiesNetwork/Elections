@@ -70,9 +70,9 @@ public class CandidateListMenu extends ChildMenuImp {
         /** Back button label. */
         public String backBtn = "<red><bold>Back</bold></red>";
         /** Next page button label. */
-        public String nextBtn = "<gray>Next ▶</gray>";
+        public String nextBtn = "<dark_gray>Next ▶</dark_gray>";
         /** Previous page button label. */
-        public String prevBtn = "<gray>◀ Prev</gray>";
+        public String prevBtn = "<dark_gray>◀ Prev</dark_gray>";
 
         /** Error shown when block ballot does not meet exact selection count. Placeholder: %min%. */
         public String mustSelectExactly = "<red><bold>You must select exactly %min% candidates.</bold></red>";
@@ -97,11 +97,11 @@ public class CandidateListMenu extends ChildMenuImp {
         /** Sound to play when submission succeeds. */
         public SoundSpec successSound = new SoundSpec();
         /** Tag appended when a candidate is currently selected in Block system. */
-        public String selectedTag = " <gray>[Selected]</gray>";
+        public String selectedTag = " <dark_gray>[Selected]</dark_gray>";
         /** Tag format appended showing the rank in Preferential system. Placeholder: %rank%. */
-        public String rankTagFormat = " <gray>[%rank%]</gray>";
+        public String rankTagFormat = " <dark_gray>[%rank%]</dark_gray>";
         /** Label format for each candidate in the list. Placeholders: %candidate_name%, %candidate_party%, %state%. */
-        public String candidateLabelFormat = "<white><bold>%candidate_name%</bold></white> <gray>(%candidate_party%)</gray>%state%";
+        public String candidateLabelFormat = "<white><bold>%candidate_name%</bold></white><dark_gray>%candidate_party%</dark_gray>%state%";
         /** Generic gray value wrapper format. Placeholder: %value%. */
         public String valueGrayFormat = "<gray>%value%</gray>";
         /** Title for the clear confirmation dialog. */
@@ -167,8 +167,8 @@ public class CandidateListMenu extends ChildMenuImp {
             String party = candidate.getParty();
             if (party == null || party.isBlank()) party = config.partyUnknown;
             String labelMini = applyPlaceholders(config.candidateLabelFormat, Map.of(
-                    "%candidate_name%", candidate.getName(),
-                    "%candidate_party%", party,
+                    "%candidate_name%", formatCandidateName(candidate.getName()),
+                    "%candidate_party%", formatCandidateParty(candidate.getName(), party),
                     "%state%", stateText
             ));
             dialogBuilder.button(miniMessage(labelMini, null), context -> new CandidateVoteMenu(context.player(), this.getParentMenu(), electionsService, electionId, candidate.getId()).open());

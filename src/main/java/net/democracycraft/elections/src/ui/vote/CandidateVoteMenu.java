@@ -47,9 +47,9 @@ public class CandidateVoteMenu extends ChildMenuImp {
         public String electionNotFound = "<red><bold>Election not found.</bold></red>";
         public String candidateNotFound = "<red><bold>Candidate not found.</bold></red>";
         /** Title format for candidate page. Placeholders: %candidate_name%, %candidate_party%. */
-        public String candidateTitleFormat = "<white><bold>%candidate_name%</bold></white> <gray>(%candidate_party%)</gray>";
+        public String candidateTitleFormat = "<white><bold>%candidate_name%</bold></white><dark_gray>%candidate_party%</dark_gray>";
         public String selectLabel = "<aqua>Select</aqua>";
-        public String saveBtn = "<gray>Save</gray>";
+        public String saveBtn = "<dark_gray>Save</dark_gray>";
         /** Rank label format. Placeholder: %max%. */
         public String rankLabelFormat = "<aqua>Rank (1..%max%)</aqua>";
         public String invalidRank = "<red><bold>Invalid rank.</bold></red>";
@@ -104,8 +104,8 @@ public class CandidateVoteMenu extends ChildMenuImp {
         String party = candidate.getParty();
         if (party == null || party.isBlank()) party = config.partyUnknown;
         Map<String,String> cph = new HashMap<>();
-        cph.put("%candidate_name%", candidate.getName());
-        cph.put("%candidate_party%", party);
+        cph.put("%candidate_name%", formatCandidateName(candidate.getName()));
+        cph.put("%candidate_party%", formatCandidateParty(candidate.getName(), party));
 
         dialogBuilder.title(miniMessage(applyPlaceholders(config.candidateTitleFormat, cph), null));
         dialogBuilder.canCloseWithEscape(config.canCloseWithEscape);
@@ -117,6 +117,7 @@ public class CandidateVoteMenu extends ChildMenuImp {
 
         final String candidateName = candidate.getName();
         final String candidateParty = party;
+        final String displayParty = formatCandidateParty(candidateName, candidateParty);
         final SoundSpec successSound = config.successSound;
 
         if (system == VotingSystem.BLOCK) {
@@ -127,7 +128,7 @@ public class CandidateVoteMenu extends ChildMenuImp {
                 Boolean value = context.response().getBoolean(selectKey);
                 session.setSelected(candidateId, value != null && value);
                 // Feedback: message + sound
-                Map<String,String> ph = new HashMap<>(); ph.put("%candidate_name%", candidateName); ph.put("%candidate_party%", candidateParty);
+                Map<String,String> ph = new HashMap<>(); ph.put("%candidate_name%", formatCandidateName(candidateName)); ph.put("%candidate_party%", displayParty);
                 context.player().sendMessage(miniMessage(applyPlaceholders(config.savedSelectionMsg, ph), null));
                 SoundHelper.play(context.player(), successSound);
                 new CandidateListMenu(context.player(), getParentMenu(), electionsService, electionId).open();
@@ -153,7 +154,7 @@ public class CandidateVoteMenu extends ChildMenuImp {
                 int rank = Math.round(value);
                 session.setRank(candidateId, rank);
                 // Feedback: message + sound
-                Map<String,String> ph = new HashMap<>(); ph.put("%candidate_name%", candidateName); ph.put("%candidate_party%", candidateParty); ph.put("%rank%", String.valueOf(rank));
+                Map<String,String> ph = new HashMap<>(); ph.put("%candidate_name%", formatCandidateName(candidateName)); ph.put("%candidate_party%", displayParty); ph.put("%rank%", String.valueOf(rank));
                 context.player().sendMessage(miniMessage(applyPlaceholders(config.savedRankMsg, ph), null));
                 SoundHelper.play(context.player(), successSound);
                 new CandidateListMenu(context.player(), getParentMenu(), electionsService, electionId).open();

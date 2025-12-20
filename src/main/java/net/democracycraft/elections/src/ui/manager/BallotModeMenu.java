@@ -48,7 +48,7 @@ public class BallotModeMenu extends ChildMenuImp {
         public String simpleBtn = "<yellow><bold>Simple</bold></yellow>";
         public String updatedMsg = "<green><bold>Ballot mode updated.</bold></green>";
         public String failedMsg = "<red><bold>Could not update ballot mode.</bold></red>";
-        public String backBtn = "<gray>Back</gray>";
+        public String backBtn = "<dark_gray>Back</dark_gray>";
         public String yamlHeader = "BallotModeMenu configuration. Placeholders: %election_id%, %mode%.";
         /** Whether the dialog can be closed with Escape. */
         public boolean canCloseWithEscape = true;

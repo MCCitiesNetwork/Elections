@@ -3,8 +3,6 @@ package net.democracycraft.elections.src.ui.vote;
 import io.papermc.paper.dialog.Dialog;
 import io.papermc.paper.registry.data.dialog.DialogBase;
 import io.papermc.paper.registry.data.dialog.body.DialogBody;
-import io.papermc.paper.registry.data.dialog.input.DialogInput;
-import io.papermc.paper.registry.data.dialog.input.SingleOptionDialogInput;
 import net.democracycraft.elections.Elections;
 import net.democracycraft.elections.api.model.BallotError;
 import net.democracycraft.elections.api.model.Candidate;
@@ -52,9 +50,11 @@ public class SimplePreferentialBallotMenu extends ChildMenuImp {
         public String titleFallback = "<gold><bold>Ballot</bold></gold>";
         public String notFound = "<red><bold>Election not found.</bold></red>";
         public String titleFormat = "<gold><bold>%election_title% Ballot (Simple Preferential)</bold></gold>";
-        public String instruction = "<gray>Click candidates to cycle rank. Submit with at least <white><bold>%min%</bold></white> preferences.</gray>";
-        public String optionNotRanked = "<gray>Not Ranked</gray>";
-        public String optionRankFormat = "<gray>Rank %rank%</gray>";
+        public String instruction = "<gray>Click candidates to assign the next available rank. Click again to unassign.</gray>";
+        public String nextRankMsg = "<aqua>Next rank to assign: <white><bold>#%next_rank%</bold></white></aqua>";
+        public String allRankedMsg = "<green><bold>All candidates ranked.</bold></green>";
+        public String formatRanked = "<green>[%rank%]</green> <white>%candidate_name%</white><dark_gray>%candidate_party%</dark_gray>";
+        public String formatUnranked = "<dark_gray>[ - ]</dark_gray> <white>%candidate_name%</white><dark_gray>%candidate_party%</dark_gray>";
         public String submitBtn = "<green><bold>Submit</bold></green>";
         public String clearBtn = "<yellow>Clear all</yellow>";
         public String backBtn = "<red><bold>Back</bold></red>";
@@ -63,13 +63,11 @@ public class SimplePreferentialBallotMenu extends ChildMenuImp {
         public String invalidRank = "<red><bold>Invalid rank: %rank%</bold></red>";
         public String duplicateRank = "<red><bold>Duplicate rank: %rank%</bold></red>";
         public String selectAtLeast = "<red><bold>Select at least %min% preferences.</bold></red>";/** Header comment describing placeholders supported. */
-        public String yamlHeader = "SimplePreferentialBallotMenu configuration. Placeholders: %election_title%, %min%, %candidate_name%, %candidate_party%, %rank%.";
+        public String yamlHeader = "SimplePreferentialBallotMenu configuration. Placeholders: %election_title%, %min%, %candidate_name%, %candidate_party%, %rank%, %next_rank%.";
         /** Loading dialog title shown while submitting. */
         public String loadingTitle = "<gold><bold>Submitting</bold></gold>";
         /** Loading dialog message shown while submitting. */
         public String loadingMessage = "<gray><italic>Submitting your ballot…</italic></gray>";
-        /** Label format for each candidate selector. Placeholders: %candidate_name%, %candidate_party%. */
-        public String candidateLabelFormat = "<white>%candidate_name%</white> <gray>(%candidate_party%)</gray>";
         /** Sound to play when submission succeeds. */
         public SoundSpec successSound = new SoundSpec();
         public String partyUnknown = "Independent";
@@ -102,54 +100,64 @@ public class SimplePreferentialBallotMenu extends ChildMenuImp {
         }
         Election election = optionalElection.get();
         int min = Math.max(1, election.getMinimumVotes());
-        int maxRank = Math.max(1, election.getCandidates().size());
+
+        BallotSessions.Session session = BallotSessions.get(getPlayer().getUniqueId(), electionId, election.getSystem());
+        session.setSystem(election.getSystem());
+
+        // Calculate next available rank
+        Set<Integer> usedRanks = new HashSet<>(session.getAllRanks().values());
+        int nextAvailableRank = 1;
+        while (usedRanks.contains(nextAvailableRank)) {
+            nextAvailableRank++;
+        }
+        final int nextRankFinal = nextAvailableRank;
 
         Map<String, String> ph = Map.of(
                 "%election_title%", election.getTitle(),
-                "%min%", String.valueOf(min)
+                "%min%", String.valueOf(min),
+                "%next_rank%", String.valueOf(nextRankFinal)
         );
 
         dialogBuilder.title(miniMessage(config.titleFormat, ph));
         dialogBuilder.canCloseWithEscape(config.canCloseWithEscape);
         dialogBuilder.afterAction(DialogBase.DialogAfterAction.CLOSE);
 
-        dialogBuilder.addBody(DialogBody.plainMessage(Component.newline().append(miniMessage(config.instruction, ph))));
+        // Next rank status message or all ranked
+        Component rankStatusMsg = (nextRankFinal > election.getCandidates().size())
+                ? miniMessage(config.allRankedMsg, ph)
+                : miniMessage(config.nextRankMsg, ph);
 
-        BallotSessions.Session session = BallotSessions.get(getPlayer().getUniqueId(), electionId, election.getSystem());
-        session.setSystem(election.getSystem());
-
+        // Instruction body
+        dialogBuilder.addBody(DialogBody.plainMessage(Component.newline()
+                .append(miniMessage(config.instruction, ph))
+                .appendNewline()
+                .append(rankStatusMsg)
+        ));
+        // Candidate buttons
         for (Candidate c : election.getCandidates()) {
-
             Integer current = session.getRank(c.getId());
             String party = c.getParty();
             if (party == null || party.isBlank()) party = config.partyUnknown;
-            List<SingleOptionDialogInput.OptionEntry> entries = new ArrayList<>();
-            entries.add(SingleOptionDialogInput.OptionEntry.create("0", miniMessage(applyPlaceholders(config.optionNotRanked, Map.of("%candidate_name%", c.getName(), "%candidate_party%", party)), null), current == null));
-            for (int r = 1; r <= maxRank; r++) {
-                boolean init = current != null && current == r;
-                entries.add(SingleOptionDialogInput.OptionEntry.create(String.valueOf(r), miniMessage(applyPlaceholders(config.optionRankFormat, Map.of("%candidate_name%", c.getName(), "%candidate_party%", party, "%rank%", String.valueOf(r))), null), init));
-            }
-            String key = "RANK_" + c.getId();
-            Map<String,String> cph = Map.of("%candidate_name%", c.getName(), "%candidate_party%", party);
-            dialogBuilder.addInput(DialogInput.singleOption(key, miniMessage(applyPlaceholders(config.candidateLabelFormat, cph), null), entries)
-                    .build());
+
+            String format = (current != null) ? config.formatRanked : config.formatUnranked;
+            Map<String, String> cph = Map.of(
+                    "%candidate_name%", formatCandidateName(c.getName()),
+                    "%candidate_party%", formatCandidateParty(c.getName(), party),
+                    "%rank%", current != null ? String.valueOf(current) : "-"
+            );
+
+            dialogBuilder.button(miniMessage(format, cph), ctx -> {
+                if (current != null) {
+                    session.clearRank(c.getId());
+                } else {
+                    session.setRank(c.getId(), nextRankFinal);
+                }
+                new SimplePreferentialBallotMenu(ctx.player(), getParentMenu(), electionsService, electionId).open();
+            });
         }
 
         dialogBuilder.buttonWithPlayer(miniMessage(config.submitBtn, ph), null, (playerActor, response) -> {
-            Map<Integer, Integer> ranksByCandidate = new HashMap<>();
-            for (Candidate c : election.getCandidates()) {
-                String key = "RANK_" + c.getId();
-                String txt = response.getText(key);
-                int idx;
-                try {
-                    idx = txt == null ? 0 : Integer.parseInt(txt);
-                } catch (NumberFormatException e) {
-                    idx = 0;
-                }
-                if (idx >= 1 && idx <= maxRank) {
-                    ranksByCandidate.put(c.getId(), idx);
-                }
-            }
+            Map<Integer, Integer> ranksByCandidate = session.getAllRanks();
 
             if (ranksByCandidate.isEmpty() || ranksByCandidate.size() < min) {
                 String base = BallotError.INSUFFICIENT_PREFERENCES.errorString();
@@ -209,20 +217,7 @@ public class SimplePreferentialBallotMenu extends ChildMenuImp {
 
         dialogBuilder.button(miniMessage(config.clearBtn, ph), ctx -> { session.clearAll(); new SimplePreferentialBallotMenu(ctx.player(), getParentMenu(), electionsService, electionId).open(); });
 
-        dialogBuilder.buttonWithPlayer(miniMessage(config.backBtn, ph), null, (playerActor, response) -> {
-            for (Candidate c : election.getCandidates()) {
-                String key = "RANK_" + c.getId();
-                String txt = response.getText(key);
-                int idx;
-                try { idx = txt == null ? 0 : Integer.parseInt(txt); } catch (NumberFormatException e) { idx = 0; }
-                if (idx >= 1 && idx <= maxRank) {
-                    session.setRank(c.getId(), idx);
-                } else {
-                    session.clearRank(c.getId());
-                }
-            }
-            getParentMenu().open();
-        });
+        dialogBuilder.button(miniMessage(config.backBtn, ph), ctx -> getParentMenu().open());
 
         return dialogBuilder.build();
     }

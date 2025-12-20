@@ -67,7 +67,7 @@ public class BlockBallotMenu extends ChildMenuImp {
         /** Sound to play when submission succeeds. */
         public SoundSpec successSound = new SoundSpec();
         /** Label format for each candidate row. Placeholders: %candidate_name%, %candidate_party%. */
-        public String candidateLabelFormat = "<gray>%candidate_name% (%candidate_party%)</gray>";
+        public String candidateLabelFormat = "<dark_gray>%candidate_name%%candidate_party%</dark_gray>";
         /** Label to use when a candidate has no party set (null/blank). */
         public String partyUnknown = "Independent";
         /** Whether the dialog can be closed with Escape. */
@@ -121,8 +121,8 @@ public class BlockBallotMenu extends ChildMenuImp {
             if (party == null || party.isBlank()) party = config.partyUnknown;
             boolean initiallySelected = BallotSessions.get(getPlayer().getUniqueId(), electionId, election.getSystem()).isSelected(candidate.getId());
             dialogBuilder.addInput(DialogInput.bool(key, miniMessage(applyPlaceholders(config.candidateLabelFormat, Map.of(
-                    "%candidate_name%", candidate.getName(),
-                    "%candidate_party%", party
+                    "%candidate_name%", formatCandidateName(candidate.getName()),
+                    "%candidate_party%", formatCandidateParty(candidate.getName(), party)
             )), null)).initial(initiallySelected).build());
         }
 
