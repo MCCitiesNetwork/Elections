@@ -16,6 +16,8 @@ import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.nio.charset.StandardCharsets;
 import java.time.Duration;
+import java.util.HashMap;
+import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 
 /**
@@ -76,7 +78,10 @@ public class GitHubGistClient implements GitHubGistService {
      */
     @Override
     public CompletableFuture<String> publish(@Nullable String fileName, @Nullable String jsonPayload) {
-        return publish(fileName, jsonPayload, null, null);
+        if (fileName == null || jsonPayload == null) {
+            return publish(Map.of());
+        }
+        return publish(Map.of(fileName, jsonPayload));
     }
 
     /**
@@ -96,6 +101,35 @@ public class GitHubGistClient implements GitHubGistService {
                                              @Nullable String jsonContent,
                                              @Nullable String markdownFileName,
                                              @Nullable String markdownContent) {
+        JsonObject files = new JsonObject();
+        if (jsonFileName != null && jsonContent != null) {
+            files.addProperty(jsonFileName, jsonContent);
+        } else if (jsonContent != null) {
+            files.addProperty("election_data.json", jsonContent);
+        }
+
+        if (markdownFileName != null && markdownContent != null) {
+            files.addProperty(markdownFileName, markdownContent);
+        } else if (markdownContent != null) {
+            String base = (jsonFileName == null || jsonFileName.isBlank()) ? "election_data" : jsonFileName;
+            if (base.endsWith(".json")) base = base.substring(0, base.length() - 5);
+            files.addProperty(base + ".md", markdownContent);
+        }
+
+        // Convert JsonObject to Map<String, String>
+        Map<String, String> fileMap = new HashMap<>();
+        files.entrySet().forEach(entry -> fileMap.put(entry.getKey(), entry.getValue().getAsString()));
+
+        return publish(fileMap);
+    }
+
+    /**
+     * Publishes multiple files to a new secret GitHub Gist.
+     *
+     * @param files Map of filename to content.
+     * @return a {@link CompletableFuture} containing the HTML URL of the published Gist
+     */
+    public CompletableFuture<String> publish(Map<String, String> files) {
         CompletableFuture<String> future = new CompletableFuture<>();
         Elections plugin = Elections.getInstance();
 
@@ -109,11 +143,16 @@ public class GitHubGistClient implements GitHubGistService {
             return future;
         }
 
+        if (files == null || files.isEmpty()) {
+            future.completeExceptionally(new IllegalArgumentException("No files provided for export."));
+            return future;
+        }
+
         new BukkitRunnable() {
             @Override
             public void run() {
                 try {
-                    String url = publishBlocking(jsonFileName, jsonContent, markdownFileName, markdownContent);
+                    String url = publishBlocking(files);
                     future.complete(url);
                 } catch (Throwable t) {
                     future.completeExceptionally(t);
@@ -127,17 +166,11 @@ public class GitHubGistClient implements GitHubGistService {
     /**
      * Performs the blocking HTTP request to GitHub.
      *
-     * @param jsonFileName    the filename for the JSON gist
-     * @param jsonContent      the content of the JSON gist
-     * @param markdownFileName the filename for the Markdown gist (optional)
-     * @param markdownContent   the content of the Markdown gist (optional)
+     * @param filesContent Map of filename to content.
      * @return the HTML URL of the created gist
      * @throws Exception if the request fails or the API returns a non-201 status
      */
-    private String publishBlocking(@Nullable String jsonFileName,
-                                   @Nullable String jsonContent,
-                                   @Nullable String markdownFileName,
-                                   @Nullable String markdownContent) throws Exception {
+    private String publishBlocking(Map<String, String> filesContent) throws Exception {
         if (Bukkit.isPrimaryThread()) {
             Elections.getInstance().getLogger().warning("GitHubGistClient#publishBlocking invoked on the main thread! This causes server lag.");
         }
@@ -148,28 +181,10 @@ public class GitHubGistClient implements GitHubGistService {
 
         JsonObject files = new JsonObject();
 
-        // JSON file (opcional)
-        if (jsonContent != null) {
-            JsonObject jsonFileContent = new JsonObject();
-            String safeJson = jsonContent == null ? "" : jsonContent;
-            jsonFileContent.addProperty("content", safeJson);
-            String safeJsonName = (jsonFileName == null || jsonFileName.isBlank()) ? "election_data.json" : jsonFileName;
-            files.add(safeJsonName, jsonFileContent);
-        }
-
-        // Markdown file (opcional)
-        if (markdownContent != null) {
-            JsonObject mdFileContent = new JsonObject();
-            mdFileContent.addProperty("content", markdownContent);
-            String safeMdName;
-            if (markdownFileName != null && !markdownFileName.isBlank()) {
-                safeMdName = markdownFileName;
-            } else {
-                String base = (jsonFileName == null || jsonFileName.isBlank()) ? "election_data" : jsonFileName;
-                if (base.endsWith(".json")) base = base.substring(0, base.length() - 5);
-                safeMdName = base + ".md";
-            }
-            files.add(safeMdName, mdFileContent);
+        for (Map.Entry<String, String> entry : filesContent.entrySet()) {
+            JsonObject fileContent = new JsonObject();
+            fileContent.addProperty("content", entry.getValue());
+            files.add(entry.getKey(), fileContent);
         }
 
         root.add("files", files);

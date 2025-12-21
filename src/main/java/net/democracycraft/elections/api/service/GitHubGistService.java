@@ -3,6 +3,7 @@ package net.democracycraft.elections.api.service;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.concurrent.CompletableFuture;
+import java.util.Map;
 
 /**
  * Service abstraction for exporting election data to a remote backend (e.g. GitHub Gists).
@@ -35,4 +36,12 @@ public interface GitHubGistService {
                                       @Nullable String jsonContent,
                                       @Nullable String markdownFileName,
                                       @Nullable String markdownContent);
+
+    /**
+     * Publishes multiple files to a new remote resource.
+     *
+     * @param files Map of filename to content.
+     * @return future that completes with the public URL of the created resource
+     */
+    CompletableFuture<String> publish(Map<String, String> files);
 }

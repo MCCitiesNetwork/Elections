@@ -11,6 +11,7 @@ import net.democracycraft.elections.api.service.GitHubGistService;
 import net.democracycraft.elections.src.command.framework.CommandContext;
 import net.democracycraft.elections.src.command.framework.Subcommand;
 import net.democracycraft.elections.src.util.config.DataFolder;
+import net.democracycraft.elections.src.util.export.BallotCsvFormatter;
 import net.democracycraft.elections.src.util.export.ElectionMarkdownFormatter;
 import net.democracycraft.elections.src.util.export.ExportMessagesConfig;
 import net.democracycraft.elections.src.util.export.github.GitHubGistClient;
@@ -24,6 +25,7 @@ import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
+import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -538,11 +540,25 @@ public class ExportCommand implements Subcommand {
                         )
                 );
 
-                List<List<String>> ballotsByName = election.getBallots().stream()
-                        .map(vote -> vote.getSelections().stream()
-                                .map(candidateId -> candidateNameById.getOrDefault(candidateId, String.valueOf(candidateId)))
-                                .collect(Collectors.toList())
-                        ).collect(Collectors.toList());
+                // Prepare data structure for CSV formatter (needs Map<String, Object>)
+                List<Map<String, Object>> ballotsDetailed = election.getBallots().stream().map(vote -> {
+                    Map<String, Object> ballot = new LinkedHashMap<>();
+                    // No voter info for public export
+                    List<String> selections = vote.getSelections().stream()
+                            .map(candidateId -> candidateNameById.getOrDefault(candidateId, String.valueOf(candidateId)))
+                            .collect(Collectors.toList());
+                    ballot.put("selections", selections);
+                    return ballot;
+                }).collect(Collectors.toList());
+
+                // JSON structure (List of List of Strings)
+                List<List<String>> ballotsByName = ballotsDetailed.stream()
+                        .map(m -> {
+                            @SuppressWarnings("unchecked")
+                            List<String> list = (List<String>) m.get("selections");
+                            return list;
+                        })
+                        .collect(Collectors.toList());
 
                 LinkedHashMap<String, Object> root = new LinkedHashMap<>();
                 root.put("ballots", ballotsByName);
@@ -552,11 +568,12 @@ public class ExportCommand implements Subcommand {
                         .setPrettyPrinting()
                         .create();
                 String json = gson.toJson(root);
+                String csv = BallotCsvFormatter.toCsv(ballotsDetailed, false);
 
                 if (isLocal) {
-                    saveBallotsLocal(context, messages, election.getId(), ballotsByName, json, false);
+                    saveBallotsLocal(context, messages, election.getId(), ballotsByName, json, csv, false);
                 } else {
-                    publishBallotsOnline(context, messages, election.getId(), ballotsByName, json, false);
+                    publishBallotsOnline(context, messages, election.getId(), ballotsByName, json, csv, false);
                 }
             });
         });
@@ -664,11 +681,12 @@ public class ExportCommand implements Subcommand {
                             .setPrettyPrinting()
                             .create();
                     String json = gson.toJson(root);
+                    String csv = BallotCsvFormatter.toCsv(ballotsDetailed, true);
 
                     if (isLocal) {
-                        saveBallotsLocal(context, messages, election.getId(), ballotsDetailed, json, true);
+                        saveBallotsLocal(context, messages, election.getId(), ballotsDetailed, json, csv, true);
                     } else {
-                        publishBallotsOnline(context, messages, election.getId(), ballotsDetailed, json, true);
+                        publishBallotsOnline(context, messages, election.getId(), ballotsDetailed, json, csv, true);
                     }
                 });
             });
@@ -684,6 +702,7 @@ public class ExportCommand implements Subcommand {
                                   int electionId,
                                   Object ballotsPayload,
                                   String json,
+                                  String csv,
                                   boolean admin) {
         Elections plugin = context.plugin();
         int count = (ballotsPayload instanceof List<?> list) ? list.size() : 0;
@@ -699,16 +718,23 @@ public class ExportCommand implements Subcommand {
         }
 
         String timestamp = String.valueOf(System.currentTimeMillis());
-        File outputFile = new File(ballotsDir, "ballots-" + electionId + "-" + timestamp + ".json");
+        File jsonFile = new File(ballotsDir, "ballots-" + electionId + "-" + timestamp + ".json");
+        File csvFile = new File(ballotsDir, "ballots-" + electionId + "-" + timestamp + ".csv");
 
-        try (FileOutputStream outputStream = new FileOutputStream(outputFile)) {
-            outputStream.write(json.getBytes(StandardCharsets.UTF_8));
+        try {
+            try (FileOutputStream outputStream = new FileOutputStream(jsonFile)) {
+                outputStream.write(json.getBytes(StandardCharsets.UTF_8));
+            }
+            try (FileOutputStream outputStream = new FileOutputStream(csvFile)) {
+                outputStream.write(csv.getBytes(StandardCharsets.UTF_8));
+            }
+
             String raw = (admin ? messages.ballotsAdminSavedLocal : messages.ballotsSavedLocal)
-                    .replace("%file%", outputFile.getName())
+                    .replace("%file%", jsonFile.getName() + " & " + csvFile.getName())
                     .replace("%count%", String.valueOf(count));
             Component msg = MiniMessageUtil.parseOrPlain(raw);
             Bukkit.getScheduler().runTask(plugin, () -> context.sender().sendMessage(msg));
-            plugin.getLogger().info("[" + (admin ? "ExportBallotsAdminLocal" : "ExportBallotsLocal") + "] actor=" + context.sender().getName() + ", electionId=" + electionId + ", file=" + outputFile.getName() + ", count=" + count);
+            plugin.getLogger().info("[" + (admin ? "ExportBallotsAdminLocal" : "ExportBallotsLocal") + "] actor=" + context.sender().getName() + ", electionId=" + electionId + ", files=" + jsonFile.getName() + "," + csvFile.getName() + ", count=" + count);
         } catch (IOException io) {
             String raw = (admin ? messages.ballotsAdminLocalFailed : messages.ballotsLocalFailed)
                     .replace("%error%", safeError(io));
@@ -723,12 +749,18 @@ public class ExportCommand implements Subcommand {
                                       int electionId,
                                       Object ballotsPayload,
                                       String json,
+                                      String csv,
                                       boolean admin) {
         Elections plugin = context.plugin();
         int count = (ballotsPayload instanceof List<?> list) ? list.size() : 0;
 
-        GitHubGistService gistService = new GitHubGistClient();
-        gistService.publish("ballots-" + electionId + ".json", json).thenAccept(url -> {
+                GitHubGistService gistService = new GitHubGistClient();
+
+        Map<String, String> files = new HashMap<>();
+        files.put("ballots-" + electionId + ".json", json);
+        files.put("ballots-" + electionId + ".csv", csv);
+
+        gistService.publish(files).thenAccept(url -> {
             String raw = (admin ? messages.ballotsAdminPublished : messages.ballotsPublished)
                     .replace("%url%", url)
                     .replace("%count%", String.valueOf(count));
