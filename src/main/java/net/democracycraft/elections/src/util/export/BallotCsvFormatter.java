@@ -26,11 +26,9 @@ public final class BallotCsvFormatter {
      * @return A formatted CSV string ready for export.
      */
     public static String toCsv(List<Map<String, Object>> ballots, boolean isAdmin) {
-        if (ballots == null || ballots.isEmpty()) {
-            return "";
-        }
+        List<Map<String, Object>> safeBallots = (ballots == null) ? List.of() : ballots;
 
-        int maxSelections = calculateMaxSelections(ballots);
+        int maxSelections = calculateMaxSelections(safeBallots);
         StringBuilder sb = new StringBuilder();
 
         // Enforce UTF-8 encoding and explicit separator for Excel
@@ -47,11 +45,11 @@ public final class BallotCsvFormatter {
         for (int i = 1; i <= maxSelections; i++) {
             header.add("Preference " + i);
         }
-        sb.append(header.toString()).append("\n");
+        sb.append(header).append("\n");
 
         // Construct Data Rows
         int index = 1;
-        for (Map<String, Object> ballot : ballots) {
+        for (Map<String, Object> ballot : safeBallots) {
             StringJoiner row = new StringJoiner(CSV_SEPARATOR);
 
             row.add(String.valueOf(index++));
@@ -69,7 +67,7 @@ public final class BallotCsvFormatter {
                     row.add(""); // Fill empty preference slots
                 }
             }
-            sb.append(row.toString()).append("\n");
+            sb.append(row).append("\n");
         }
 
         return sb.toString();

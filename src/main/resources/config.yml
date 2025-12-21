@@ -10,8 +10,3 @@ elections:
   autoCloseSweepSeconds: 60
   deletedPurgeSweepSeconds: 3600
   deletedRetentionDays: 30
-
-pastegg:
-  apiBase: https://api.paste.gg
-  viewBase: https://paste.gg/p/anonymous/
-  apiKey: ""

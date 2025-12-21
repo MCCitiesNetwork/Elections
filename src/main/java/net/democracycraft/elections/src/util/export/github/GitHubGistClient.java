@@ -8,6 +8,7 @@ import net.democracycraft.elections.src.util.config.DataFolder;
 import net.democracycraft.elections.src.util.yml.AutoYML;
 import org.bukkit.Bukkit;
 import org.bukkit.scheduler.BukkitRunnable;
+import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
 import java.net.URI;
@@ -175,19 +176,7 @@ public class GitHubGistClient implements GitHubGistService {
             Elections.getInstance().getLogger().warning("GitHubGistClient#publishBlocking invoked on the main thread! This causes server lag.");
         }
 
-        JsonObject root = new JsonObject();
-        root.addProperty("description", "Election data exported from DemocracyElections");
-        root.addProperty("public", config.publicGists);
-
-        JsonObject files = new JsonObject();
-
-        for (Map.Entry<String, String> entry : filesContent.entrySet()) {
-            JsonObject fileContent = new JsonObject();
-            fileContent.addProperty("content", entry.getValue());
-            files.add(entry.getKey(), fileContent);
-        }
-
-        root.add("files", files);
+        JsonObject root = getJsonObject(filesContent);
 
         // Prepare the request
         String apiBase = (config.apiBase == null || config.apiBase.isBlank())
@@ -218,5 +207,30 @@ public class GitHubGistClient implements GitHubGistService {
         } else {
             throw new IllegalStateException("GitHub response missing 'html_url' field.");
         }
+    }
+
+    private @NotNull JsonObject getJsonObject(Map<String, String> filesContent) {
+        JsonObject root = new JsonObject();
+        root.addProperty("description", "Election data exported from DemocracyElections");
+        root.addProperty("public", config.publicGists);
+
+        JsonObject files = new JsonObject();
+
+        for (Map.Entry<String, String> entry : filesContent.entrySet()) {
+            // Skip empty content to avoid GitHub API 422 error
+            if (entry.getValue() == null || entry.getValue().isBlank()) {
+                continue;
+            }
+            JsonObject fileContent = new JsonObject();
+            fileContent.addProperty("content", entry.getValue());
+            files.add(entry.getKey(), fileContent);
+        }
+
+        if (files.isEmpty()) {
+            throw new IllegalArgumentException("Cannot publish Gist: all provided files are empty.");
+        }
+
+        root.add("files", files);
+        return root;
     }
 }
