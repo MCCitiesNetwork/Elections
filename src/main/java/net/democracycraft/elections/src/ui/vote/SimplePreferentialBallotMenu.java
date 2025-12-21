@@ -53,8 +53,8 @@ public class SimplePreferentialBallotMenu extends ChildMenuImp {
         public String instruction = "<gray>Click candidates to assign the next available rank. Click again to unassign.</gray>";
         public String nextRankMsg = "<aqua>Next rank to assign: <white><bold>#%next_rank%</bold></white></aqua>";
         public String allRankedMsg = "<green><bold>All candidates ranked.</bold></green>";
-        public String formatRanked = "<green>[%rank%]</green> <white>%candidate_name%</white><dark_gray>%candidate_party%</dark_gray>";
-        public String formatUnranked = "<dark_gray>[ - ]</dark_gray> <white>%candidate_name%</white><dark_gray>%candidate_party%</dark_gray>";
+        public String formatRanked = "<green>[%rank%]</green> <white>%candidate_name%</white> <dark_gray>(%candidate_party%)</dark_gray>";
+        public String formatUnranked = "<dark_gray>[ - ]</dark_gray> <white>%candidate_name%</white> <dark_gray>(%candidate_party%)</dark_gray>";
         public String submitBtn = "<green><bold>Submit</bold></green>";
         public String clearBtn = "<yellow>Clear all</yellow>";
         public String backBtn = "<red><bold>Back</bold></red>";

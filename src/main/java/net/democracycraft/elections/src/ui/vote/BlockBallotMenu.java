@@ -67,7 +67,7 @@ public class BlockBallotMenu extends ChildMenuImp {
         /** Sound to play when submission succeeds. */
         public SoundSpec successSound = new SoundSpec();
         /** Label format for each candidate row. Placeholders: %candidate_name%, %candidate_party%. */
-        public String candidateLabelFormat = "<dark_gray>%candidate_name%%candidate_party%</dark_gray>";
+        public String candidateLabelFormat = "<dark_gray>%candidate_name% (%candidate_party%)</dark_gray>";
         /** Label to use when a candidate has no party set (null/blank). */
         public String partyUnknown = "Independent";
         /** Whether the dialog can be closed with Escape. */

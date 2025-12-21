@@ -67,6 +67,8 @@ public class CandidateVoteListMenu extends ChildMenuImp {
         public String clearBtn = "<yellow>Clear all</yellow>";
         /** Clear confirmation button label. */
         public String clearConfirmBtn = "<yellow>Confirm Clear</yellow>";
+
+        public String clearConfirmTitle = "<red><bold>Confirm Clear Selections</bold></red>";
         /** Back button label. */
         public String backBtn = "<red><bold>Back</bold></red>";
         /** Next page button label. */
@@ -99,13 +101,10 @@ public class CandidateVoteListMenu extends ChildMenuImp {
         /** Tag appended when a candidate is currently selected in Block system. */
         public String selectedTag = " <dark_gray>[Selected]</dark_gray>";
         /** Tag format appended showing the rank in Preferential system. Placeholder: %rank%. */
-        public String rankTagFormat = " <dark_gray>[%rank%]</dark_gray>";
-        /** Label format for each candidate in the list. Placeholders: %candidate_name%, %candidate_party%, %state%. */
-        public String candidateLabelFormat = "<white><bold>%candidate_name%</bold></white><dark_gray>%candidate_party%</dark_gray>%state%";
-        /** Generic gray value wrapper format. Placeholder: %value%. */
+        public String rankTag = " <dark_gray>[Rank: %rank%]</dark_gray>";
         public String valueGrayFormat = "<gray>%value%</gray>";
-        /** Title for the clear confirmation dialog. */
-        public String clearConfirmTitle = "<yellow><bold>Clear all selections?</bold></yellow>";
+        /** Label format for each candidate button. Placeholders: %candidate_name%, %candidate_party%. */
+        public String candidateLabelFormat = "<white>%candidate_name%</white> <dark_gray>(%candidate_party%)</dark_gray>";
         /** Label to use when a candidate has no party set (null/blank). */
         public String partyUnknown = "Independent";
         /** Whether the dialog can be closed with Escape. */
@@ -162,7 +161,7 @@ public class CandidateVoteListMenu extends ChildMenuImp {
                 stateText = session.isSelected(candidate.getId()) ? config.selectedTag : "";
             } else {
                 Integer rankValue = session.getRank(candidate.getId());
-                stateText = (rankValue != null) ? applyPlaceholders(config.rankTagFormat, Map.of("%rank%", String.valueOf(rankValue))) : "";
+                stateText = (rankValue != null) ? applyPlaceholders(config.rankTag, Map.of("%rank%", String.valueOf(rankValue))) : "";
             }
             String party = candidate.getParty();
             if (party == null || party.isBlank()) party = config.partyUnknown;

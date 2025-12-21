@@ -47,7 +47,7 @@ public class CandidateVoteMenu extends ChildMenuImp {
         public String electionNotFound = "<red><bold>Election not found.</bold></red>";
         public String candidateNotFound = "<red><bold>Candidate not found.</bold></red>";
         /** Title format for candidate page. Placeholders: %candidate_name%, %candidate_party%. */
-        public String candidateTitleFormat = "<white><bold>%candidate_name%</bold></white><dark_gray>%candidate_party%</dark_gray>";
+        public String candidateTitleFormat = "<white><bold>%candidate_name%</bold></white> <dark_gray>(%candidate_party%)</dark_gray>";
         public String selectLabel = "<aqua>Select</aqua>";
         public String saveBtn = "<dark_gray>Save</dark_gray>";
         /** Rank label format. Placeholder: %max%. */

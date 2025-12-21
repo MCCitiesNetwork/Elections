@@ -69,7 +69,7 @@ public class PreferentialBallotMenu extends ChildMenuImp {
         /** Label to use when a candidate has no party set (null/blank). */
         public String partyUnknown = "Independent";
         /** Label for each candidate slider. Placeholders: %candidate_name%, %candidate_party%, %current_rank%. */
-        public String candidateSliderLabelFormat = "<white>%candidate_name%</white><dark_gray>%candidate_party%</dark_gray> <dark_gray> | Current: </dark_gray>";
+        public String candidateSliderLabelFormat = "<white>%candidate_name%</white> <dark_gray>(%candidate_party%)</dark_gray> <dark_gray> | Current: </dark_gray>";
         /** Text used when a candidate currently has no rank assigned. */
         public String notRankedText = "Not ranked";
         public boolean canCloseWithEscape = true;

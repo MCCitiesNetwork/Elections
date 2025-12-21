@@ -77,14 +77,15 @@ Tab completion:
    - Duration — days and time (H:M:S). When set, elections auto‑close after the configured duration.
    - Voter Requirements — one or both:
      - Specific permission nodes the player must have.
-     - Minimum active playtime (minutes).
+     - Minimum active playtime (configurable units, e.g., hours).
    - Ballot Mode — UI presentation for ballots.
-3) Candidates — add or remove candidates as needed.
+3) Candidates — add candidates in the main menu. Use "Candidate List" to view and remove existing candidates (with confirmation).
 4) Polls (booths) — define locations where players can cast ballots:
    - Choose “Define Poll” and right‑click a block/head in the world to register the booth.
-   - “Undefine Poll” to remove it; click the same block.
+   - “Undefine Poll” to remove specific booths.
+   - “Remove All Polls” to clear all booths for the election at once.
    - Booth locations are globally unique: two different elections cannot use the same block. If you try, you’ll get an error telling you which election already owns that location (ID and title).
-5) Open/Close — when ready, open the election. It will auto‑close if a duration is set, or you can close manually.
+5) Open/Close — when ready, open the election. It will auto‑close if a duration is set, or you can close manually. Note: Opening the manager for an OPEN election requires confirmation to prevent accidental edits during voting.
 
 ## Player workflow (voting)
 1) Go to a defined poll (booth) and right‑click the block/head.

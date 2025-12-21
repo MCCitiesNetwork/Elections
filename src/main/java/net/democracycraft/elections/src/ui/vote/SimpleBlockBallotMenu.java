@@ -75,7 +75,7 @@ public class SimpleBlockBallotMenu extends ChildMenuImp {
         public SoundSpec successSound = new SoundSpec();
         public String valueGrayFormat = "<gray>%value%</gray>";
         /** Label format for each candidate row. Placeholders: %candidate_name%, %candidate_party%. */
-        public String candidateLabelFormat = "<white>%candidate_name%</white><dark_gray>%candidate_party%</dark_gray>";
+        public String candidateLabelFormat = "<white>%candidate_name%</white> <dark_gray>(%candidate_party%)</dark_gray>";
         /** Label to use when a candidate has no party set (null/blank). */
         public String partyUnknown = "Independent";
         public boolean canCloseWithEscape = true;
