@@ -48,11 +48,7 @@ public class CandidatesMenu extends ChildMenuImp {
     /** Config DTO for this menu. */
     public static class Config implements Serializable {
         public String title = "<gold><bold>Candidates</bold></gold>";
-        public String none = "<gray>No candidates yet.</gray>";
-        public String currentHeader = "<aqua><bold>Current candidates:</bold></aqua>";
-        public String removePrefix = "<red>Remove</red> ";
-        public String removedMsg = "<yellow>Candidate removed.</yellow>";
-        public String removeFailedMsg = "<red><bold>Could not remove candidate.</bold></red>";
+        public String listBtn = "<yellow><bold>Candidate List</bold></yellow> <gray>[%count%]</gray>";
         public String nameLabel = "<aqua>Candidate name</aqua>";
         public String partyLabel = "<aqua>Candidate party (optional)</aqua>";
         public String addBtn = "<green><bold>Add</bold></green>";
@@ -60,7 +56,7 @@ public class CandidatesMenu extends ChildMenuImp {
         public String addFailedMsg = "<red><bold>Could not add candidate.</bold></red>";
         public String addedMsg = "<green><bold>Candidate added.</bold></green>";
         public String backBtn = "<gray>Back</gray>";
-        public String yamlHeader = "CandidatesMenu configuration. Placeholders: %player%, %election_id%, %candidate_id%, %candidate_name%.";
+        public String yamlHeader = "CandidatesMenu configuration. Placeholders: %player%, %election_id%, %candidate_id%, %candidate_name%, %count%.";
         /** Loading dialog title and message while adding/removing. */
         public String loadingTitle = "<gold><bold>Updating</bold></gold>";
         public String loadingMessage = "<gray><italic>Applying candidate changes…</italic></gray>";
@@ -85,33 +81,10 @@ public class CandidatesMenu extends ChildMenuImp {
         dialogBuilder.canCloseWithEscape(config.canCloseWithEscape);
         dialogBuilder.afterAction(DialogBase.DialogAfterAction.CLOSE);
 
-        if (election == null || election.getCandidates().isEmpty()) {
-            dialogBuilder.addBody(DialogBody.plainMessage(miniMessage(config.none, null)));
-        } else {
-            dialogBuilder.addBody(DialogBody.plainMessage(miniMessage(config.currentHeader, null)));
-            for (Candidate candidate : election.getCandidates()) {
-                Component label = miniMessage("<gray>#" + candidate.getId() + "</gray> ")
-                        .append(miniMessage("<white><bold>" + candidate.getName() + "</bold></white>", null));
-                int candidateId = candidate.getId();
-                dialogBuilder.button(miniMessage(config.removePrefix, null).append(label), context -> {
-                    // Offload removal to async thread
-                    new LoadingMenu(context.player(), getParentMenu(), miniMessage(config.loadingTitle, null), miniMessage(config.loadingMessage, null)).open();
-                    new BukkitRunnable() {
-                        @Override
-                        public void run() {
-                            boolean removed = electionsService.removeCandidate(electionId, candidateId, context.player().getName());
-                            new BukkitRunnable() {
-                                @Override
-                                public void run() {
-                                    context.player().sendMessage(removed ? miniMessage(config.removedMsg, null) : miniMessage(config.removeFailedMsg, null));
-                                    new CandidatesMenu(context.player(), getParentMenu(), electionsService, electionId).open();
-                                }
-                            }.runTask(Elections.getInstance());
-                        }
-                    }.runTaskAsynchronously(Elections.getInstance());
-                });
-            }
-        }
+        int count = (election == null) ? 0 : election.getCandidates().size();
+        dialogBuilder.button(miniMessage(applyPlaceholders(config.listBtn, Map.of("%count%", String.valueOf(count))), null), context -> {
+            new CandidateListMenu(context.player(), getParentMenu(), electionsService, electionId).open();
+        });
 
         // Add name input and optional party input so the candidate party can be set at creation time.
         dialogBuilder.addInput(DialogInput.text(Keys.CANDIDATE_NAME.name(), miniMessage(config.nameLabel, null)).labelVisible(true).build());

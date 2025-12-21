@@ -102,7 +102,7 @@ public class BallotIntroMenu extends ParentMenuImp {
                 if (election.getSystem() == VotingSystem.PREFERENTIAL) {
                     new PreferentialBallotMenu(context.player(), this, electionsService, electionId).open();
                 } else {
-                    new CandidateListMenu(context.player(), this, electionsService, electionId).open();
+                    new CandidateVoteListMenu(context.player(), this, electionsService, electionId).open();
                 }
             }
         });

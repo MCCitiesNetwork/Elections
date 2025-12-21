@@ -31,6 +31,6 @@ public class ChildMenuImp extends MenuImp implements ChildMenu {
 
     @Override
     public AutoDialog.Builder getAutoDialogBuilder() {
-        return AutoDialog.builder(parentMenu);
+        return AutoDialog.builder();
     }
 }

@@ -37,6 +37,6 @@ public class ParentMenuImp extends MenuImp implements ParentMenu {
 
      @Override
      public AutoDialog.Builder getAutoDialogBuilder() {
-        return AutoDialog.builder(this);
+        return AutoDialog.builder();
     }
 }

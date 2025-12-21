@@ -21,7 +21,11 @@ import org.bukkit.event.block.Action;
 import org.bukkit.event.player.PlayerInteractEvent;
 import org.bukkit.scheduler.BukkitRunnable;
 
+import java.util.HashMap;
+import java.util.Map;
 import java.util.Optional;
+import java.util.UUID;
+import java.util.concurrent.ConcurrentHashMap;
 
 /**
  * Bukkit listener that opens the ballot UI when a player right-clicks a block
@@ -29,12 +33,18 @@ import java.util.Optional;
  */
 public record PollInteractListener(ElectionsService electionsService) implements Listener {
 
+    private static final Map<UUID, Long> cooldowns = new ConcurrentHashMap<>();
+    private static final long COOLDOWN_MS = 500;
+
     @EventHandler(priority = EventPriority.NORMAL, ignoreCancelled = true)
     public void onInteract(PlayerInteractEvent event) {
         if (event.getAction() != Action.RIGHT_CLICK_BLOCK) return;
         Block block = event.getClickedBlock();
         if (block == null) return;
         Player player = event.getPlayer();
+
+        if (System.currentTimeMillis() - cooldowns.getOrDefault(player.getUniqueId(), 0L) < COOLDOWN_MS) return;
+        cooldowns.put(player.getUniqueId(), System.currentTimeMillis());
 
         Optional<Election> match = findElectionByBlock(block);
         if (match.isEmpty()) return;

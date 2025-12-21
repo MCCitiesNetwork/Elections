@@ -6,8 +6,10 @@ import io.papermc.paper.registry.data.dialog.body.DialogBody;
 import net.democracycraft.elections.api.model.Election;
 import net.democracycraft.elections.api.service.ElectionsService;
 import net.democracycraft.elections.api.ui.ParentMenu;
+import net.democracycraft.elections.src.data.Dto;
+import net.democracycraft.elections.src.data.ElectionStatus;
 import net.democracycraft.elections.src.ui.ChildMenuImp;
-import net.democracycraft.elections.src.ui.common.LoadingMenu;
+import net.democracycraft.elections.src.ui.common.ConfirmationMenu;
 import net.democracycraft.elections.src.ui.manager.ElectionManagerMenu;
 import net.democracycraft.elections.api.ui.AutoDialog;
 import net.kyori.adventure.text.Component;
@@ -39,7 +41,7 @@ public class ElectionPreviewMenu extends ChildMenuImp {
     }
 
     /** Config DTO for this menu. */
-    public static class Config implements Serializable {
+    public static class Config implements Dto {
         public String titleFallback = "<gold><bold>Election</bold></gold>";
         public String titleFormat = "<gold><bold>Election #%id%</bold></gold>";
         public String notFound = "<red><bold>Election not found.</bold></red>";
@@ -49,6 +51,7 @@ public class ElectionPreviewMenu extends ChildMenuImp {
         public String candidatesLabel = "<aqua>Candidates: </aqua>";
         public String pollsLabel = "<aqua>Polls: </aqua>";
         public String openManagerBtn = "<yellow><bold>Open Manager</bold></yellow>";
+        public String openConfirmationMsg = "<yellow><bold>Warning:</bold></yellow> <gray>This election is currently <green>OPEN</green>. Editing it may affect ongoing voting.</gray>";
         public String backBtn = "<dark_gray>Back</dark_gray>";
         public String yamlHeader = "ElectionListItemMenu configuration. Placeholders: %id%, %title%, %status%, %voters%, %candidates%, %polls%.";
         /** Whether the dialog can be closed with Escape. */
@@ -104,11 +107,25 @@ public class ElectionPreviewMenu extends ChildMenuImp {
                 .appendNewline().append(miniMessage(config.pollsLabel, placeholders)).append(miniMessage("<gray>" + placeholders.get("%polls%") + "</gray>", null))
         ));
 
-        dialogBuilder.button(miniMessage(config.openManagerBtn, placeholders), context -> new ElectionManagerMenu(context.player(), electionsService, electionId).open());
-        Dialog parentDialog = parentMenu.getDialog();
-        if (parentDialog != null) {
-            dialogBuilder.button(miniMessage(config.backBtn, placeholders), context -> context.player().showDialog(parentDialog));
-        }
+        dialogBuilder.button(miniMessage(config.openManagerBtn, null), context -> {
+            if (election.getStatus() == ElectionStatus.OPEN) {
+                new ConfirmationMenu(
+                        context.player(),
+                        this,
+                        config.openConfirmationMsg,
+                        p -> new ElectionManagerMenu(p, electionsService, electionId).open()
+                ).open();
+            } else {
+                new ElectionManagerMenu(context.player(), electionsService, electionId).open();
+            }
+        });
+
+        dialogBuilder.button(miniMessage(config.backBtn, null), context -> {
+            Dialog parentDialog = parentMenu.getDialog();
+            if (parentDialog != null) {
+                context.player().showDialog(parentDialog);
+            }
+        });
 
         return dialogBuilder.build();
     }

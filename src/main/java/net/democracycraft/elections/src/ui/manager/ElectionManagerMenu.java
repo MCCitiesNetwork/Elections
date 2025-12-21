@@ -72,6 +72,10 @@ public class ElectionManagerMenu extends ParentMenuImp {
         public String deleteFailedMsg = "<red><bold>Could not delete election.</bold></red>";
         public String closeBtn = "<red><bold>Close</bold></red>";
 
+        public String statusOpenFormat = "<green><bold>OPEN</bold></green>";
+        public String statusClosedFormat = "<red><bold>CLOSED</bold></red>";
+        public String statusDeletedFormat = "<red><bold>DELETED</bold></red>";
+
         public String statusUpdatedMsg = "<green><bold>Status updated.</bold></green>";
         public String statusUpdateFailedMsg = "<red><bold>Could not update status.</bold></red>";
         public String cannotOpenBlockMsg = "<red><bold>Cannot open: minimum votes exceeds number of candidates.</bold></red>";
@@ -119,7 +123,14 @@ public class ElectionManagerMenu extends ParentMenuImp {
         Map<String, String> placeholders = new HashMap<>();
         placeholders.put("%election_title%", election.getTitle());
         placeholders.put("%election_id%", String.valueOf(election.getId()));
-        placeholders.put("%status%", election.getStatus().name());
+
+        String statusFormatted = switch (election.getStatus()) {
+            case OPEN -> config.statusOpenFormat;
+            case CLOSED -> config.statusClosedFormat;
+            case DELETED -> config.statusDeletedFormat;
+        };
+        placeholders.put("%status%", statusFormatted);
+
         placeholders.put("%voters_count%", String.valueOf(election.getVoterCount()));
         placeholders.put("%polls_count%", String.valueOf(election.getPolls().size()));
         placeholders.put("%candidates_count%", String.valueOf(election.getCandidates().size()));

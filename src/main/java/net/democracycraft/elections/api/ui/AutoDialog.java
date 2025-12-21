@@ -15,6 +15,8 @@ import net.kyori.adventure.audience.Audience;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.event.ClickCallback;
 import org.bukkit.entity.Player;
+import org.jetbrains.annotations.Contract;
+import org.jetbrains.annotations.NotNull;
 
 import java.time.Duration;
 import java.util.ArrayList;
@@ -36,19 +38,18 @@ public class AutoDialog {
         return internal;
     }
 
-    public void show(Player player) {
+    public void show(@NotNull Player player) {
         player.showDialog(internal);
     }
 
-    public static Builder builder(ParentMenu parentMenu) {
-        return new Builder(parentMenu);
+    @Contract(" -> new")
+    public static @NotNull Builder builder() {
+        return new Builder();
     }
 
     public static class Builder {
-        private ParentMenu parentMenu;
 
-        private Builder(ParentMenu parentMenu) {
-            this.parentMenu = parentMenu;
+        private Builder() {
         }
 
 
@@ -75,10 +76,6 @@ public class AutoDialog {
         public Builder addInput(DialogInput element) { this.inputs.add(element); return this; }
 
         public Builder addButton(ActionButton button) { this.buttons.add(button); return this; }
-
-        public ParentMenu getParentMenu() {
-            return parentMenu;
-        }
 
         public Builder button(Component label, Component tooltip, Consumer<Context> handler) {
             DialogActionCallback callback = (response, audience) -> {

@@ -27,18 +27,18 @@ import java.util.*;
  * Candidate list menu: shows buttons for each candidate and allows navigating to a per-candidate screen.
  * Also provides Submit/Clear/Back actions and persists state via BallotSessions. All texts configurable via YAML.
  */
-public class CandidateListMenu extends ChildMenuImp {
+public class CandidateVoteListMenu extends ChildMenuImp {
 
     private final ElectionsService electionsService;
     private final int electionId;
     private final int page;
     private final int pageSize = 15;
 
-    public CandidateListMenu(Player player, ParentMenu parent, ElectionsService electionsService, int electionId) {
+    public CandidateVoteListMenu(Player player, ParentMenu parent, ElectionsService electionsService, int electionId) {
         this(player, parent, electionsService, electionId, 0);
     }
 
-    public CandidateListMenu(Player player, ParentMenu parent, ElectionsService electionsService, int electionId, int page) {
+    public CandidateVoteListMenu(Player player, ParentMenu parent, ElectionsService electionsService, int electionId, int page) {
         super(player, parent, "ballot_list_" + electionId + "_" + Math.max(0, page));
         this.electionsService = electionsService;
         this.electionId = electionId;
@@ -113,8 +113,8 @@ public class CandidateListMenu extends ChildMenuImp {
         public Config() {}
 
         public static void loadConfig() {
-            var yml = getOrCreateMenuYml(CandidateListMenu.Config.class, "CandidateListMenu.yml", new CandidateListMenu.Config().yamlHeader);
-            yml.loadOrCreate(CandidateListMenu.Config::new);
+            var yml = getOrCreateMenuYml(CandidateVoteListMenu.Config.class, "CandidateListMenu.yml", new CandidateVoteListMenu.Config().yamlHeader);
+            yml.loadOrCreate(CandidateVoteListMenu.Config::new);
         }
     }
 
@@ -173,8 +173,8 @@ public class CandidateListMenu extends ChildMenuImp {
             ));
             dialogBuilder.button(miniMessage(labelMini, null), context -> new CandidateVoteMenu(context.player(), this.getParentMenu(), electionsService, electionId, candidate.getId()).open());
         }
-        if (page > 0) dialogBuilder.button(miniMessage(config.prevBtn, placeholders), c -> new CandidateListMenu(c.player(), getParentMenu(), electionsService, electionId, page - 1).open());
-        if (to < all.size()) dialogBuilder.button(miniMessage(config.nextBtn, placeholders), c -> new CandidateListMenu(c.player(), getParentMenu(), electionsService, electionId, page + 1).open());
+        if (page > 0) dialogBuilder.button(miniMessage(config.prevBtn, placeholders), c -> new CandidateVoteListMenu(c.player(), getParentMenu(), electionsService, electionId, page - 1).open());
+        if (to < all.size()) dialogBuilder.button(miniMessage(config.nextBtn, placeholders), c -> new CandidateVoteListMenu(c.player(), getParentMenu(), electionsService, electionId, page + 1).open());
 
         dialogBuilder.buttonWithPlayer(miniMessage(config.submitBtn, placeholders), null, (playerActor, response) -> {
             if (system == VotingSystem.BLOCK) {
@@ -288,8 +288,8 @@ public class CandidateListMenu extends ChildMenuImp {
         dialogBuilder.button(miniMessage(config.clearBtn, placeholders), context -> {
             AutoDialog.Builder confirm = getAutoDialogBuilder();
             confirm.title(miniMessage(config.clearConfirmTitle, placeholders));
-            confirm.button(miniMessage(config.clearConfirmBtn, placeholders), c2 -> { BallotSessions.get(c2.player().getUniqueId(), electionId, system).clearAll(); new CandidateListMenu(c2.player(), getParentMenu(), electionsService, electionId, page).open(); });
-            confirm.button(miniMessage(config.backBtn, placeholders), c2 -> new CandidateListMenu(c2.player(), getParentMenu(), electionsService, electionId, page).open());
+            confirm.button(miniMessage(config.clearConfirmBtn, placeholders), c2 -> { BallotSessions.get(c2.player().getUniqueId(), electionId, system).clearAll(); new CandidateVoteListMenu(c2.player(), getParentMenu(), electionsService, electionId, page).open(); });
+            confirm.button(miniMessage(config.backBtn, placeholders), c2 -> new CandidateVoteListMenu(c2.player(), getParentMenu(), electionsService, electionId, page).open());
             context.player().showDialog(confirm.build());
         });
         dialogBuilder.button(miniMessage(config.backBtn, placeholders), context -> getParentMenu().open());

@@ -131,7 +131,7 @@ public class CandidateVoteMenu extends ChildMenuImp {
                 Map<String,String> ph = new HashMap<>(); ph.put("%candidate_name%", formatCandidateName(candidateName)); ph.put("%candidate_party%", displayParty);
                 context.player().sendMessage(miniMessage(applyPlaceholders(config.savedSelectionMsg, ph), null));
                 SoundHelper.play(context.player(), successSound);
-                new CandidateListMenu(context.player(), getParentMenu(), electionsService, electionId).open();
+                new CandidateVoteListMenu(context.player(), getParentMenu(), electionsService, electionId).open();
             });
         } else {
             int maxRank = Math.max(1, candidates.size());
@@ -157,9 +157,9 @@ public class CandidateVoteMenu extends ChildMenuImp {
                 Map<String,String> ph = new HashMap<>(); ph.put("%candidate_name%", formatCandidateName(candidateName)); ph.put("%candidate_party%", displayParty); ph.put("%rank%", String.valueOf(rank));
                 context.player().sendMessage(miniMessage(applyPlaceholders(config.savedRankMsg, ph), null));
                 SoundHelper.play(context.player(), successSound);
-                new CandidateListMenu(context.player(), getParentMenu(), electionsService, electionId).open();
+                new CandidateVoteListMenu(context.player(), getParentMenu(), electionsService, electionId).open();
             });
-            dialogBuilder.button(miniMessage(config.clearRankBtn), context -> { session.clearRank(candidateId); new CandidateListMenu(context.player(), getParentMenu(), electionsService, electionId).open(); });
+            dialogBuilder.button(miniMessage(config.clearRankBtn), context -> { session.clearRank(candidateId); new CandidateVoteListMenu(context.player(), getParentMenu(), electionsService, electionId).open(); });
         }
 
         dialogBuilder.buttonWithPlayer(miniMessage(config.backBtn), null, (playerActor, response) -> {
@@ -176,7 +176,7 @@ public class CandidateVoteMenu extends ChildMenuImp {
                     if (rank >= 1 && rank <= maxRank) session.setRank(candidateId, rank);
                 }
             }
-            new CandidateListMenu(playerActor, getParentMenu(), electionsService, electionId).open();
+            new CandidateVoteListMenu(playerActor, getParentMenu(), electionsService, electionId).open();
         });
         return dialogBuilder.build();
     }

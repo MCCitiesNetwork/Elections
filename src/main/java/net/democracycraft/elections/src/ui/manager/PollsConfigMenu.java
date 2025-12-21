@@ -8,6 +8,7 @@ import net.democracycraft.elections.api.service.ElectionsService;
 import net.democracycraft.elections.src.ui.ChildMenuImp;
 import net.democracycraft.elections.api.ui.ParentMenu;
 import net.democracycraft.elections.api.ui.AutoDialog;
+import net.democracycraft.elections.src.ui.common.ConfirmationMenu;
 import net.democracycraft.elections.src.util.listener.DynamicListener;
 import net.democracycraft.elections.src.ui.common.LoadingMenu;
 import org.bukkit.Location;
@@ -21,12 +22,16 @@ import java.io.Serializable;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Objects;
+import java.util.UUID;
+import java.util.concurrent.ConcurrentHashMap;
 
 /**
  * Child dialog to configure polls by clicking blocks (only dynamic listener allowed).
  * All texts are configurable via data/menus/PollsConfigMenu.yml with placeholders.
  */
 public class PollsConfigMenu extends ChildMenuImp {
+
+    private static final Map<UUID, DynamicListener> activeListeners = new ConcurrentHashMap<>();
 
     private final Elections plugin;
     private final ElectionsService electionsService;
@@ -56,6 +61,7 @@ public class PollsConfigMenu extends ChildMenuImp {
         public String clickHint = "<gray>Click a block/head to define or remove a poll.</gray>";
         public String defineBtn = "<green><bold>Define Poll</bold></green>";
         public String undefineBtn = "<red><bold>Undefine Poll</bold></red>";
+        public String removeAllBtn = "<dark_red><bold>Remove All Polls</bold></dark_red>";
         public String backBtn = "<dark_gray>Back</dark_gray>";
 
         public String definedMsg = "<green><bold>Defined poll at</bold></green> <white>%x%</white>,<white>%y%</white>,<white>%z%</white>";
@@ -68,6 +74,7 @@ public class PollsConfigMenu extends ChildMenuImp {
         public String actionRemove = "remove";
 
         public String confirmUndefineTitle = "<red><bold>Confirm undefine?</bold></red>";
+        public String confirmRemoveAllMsg = "<red>Are you sure you want to remove ALL polls for this election?</red>";
         public String confirmBtn = "<red>Confirm</red>";
         public String cancelBtn = "<dark_gray>Cancel</dark_gray>";
 
@@ -106,18 +113,59 @@ public class PollsConfigMenu extends ChildMenuImp {
             confirm.button(miniMessage(config.cancelBtn, null), c2 -> new ElectionManagerMenu(c2.player(), electionsService, electionId).open());
             context.player().showDialog(confirm.build());
         });
+        dialogBuilder.button(miniMessage(config.removeAllBtn, null), context -> {
+            new ConfirmationMenu(
+                    context.player(),
+                    this,
+                    config.confirmRemoveAllMsg,
+                    player -> {
+                        new LoadingMenu(player, getParentMenu(), miniMessage(config.loadingTitle, null), miniMessage(config.loadingMessage, null)).open();
+                        new BukkitRunnable() {
+                            @Override
+                            public void run() {
+                                var election = electionsService.getElectionSnapshot(electionId);
+                                if (election.isPresent()) {
+                                    for (var poll : election.get().getPolls()) {
+                                        electionsService.removePoll(electionId, poll.getWorld(), poll.getX(), poll.getY(), poll.getZ(), player.getName());
+                                    }
+                                }
+                                new BukkitRunnable() {
+                                    @Override
+                                    public void run() {
+                                        new PollsConfigMenu(player, getParentMenu(), plugin, electionsService, electionId).open();
+                                    }
+                                }.runTask(plugin);
+                            }
+                        }.runTaskAsynchronously(plugin);
+                    }
+            ).open();
+        });
         dialogBuilder.button(miniMessage(config.backBtn, null), context -> new ElectionManagerMenu(context.player(), electionsService, electionId).open());
 
         return dialogBuilder.build();
     }
 
     private void startBlockSelect(Player player, boolean define, Config config) {
+        UUID uuid = player.getUniqueId();
+        if (activeListeners.containsKey(uuid)) {
+            DynamicListener old = activeListeners.remove(uuid);
+            if (old != null) {
+                old.stop();
+                old.deleteListener();
+            }
+        }
+
         var dynamicListener = new DynamicListener();
+        activeListeners.put(uuid, dynamicListener);
+
         Listener listener = new Listener() {
             @EventHandler
             public void onInteract(PlayerInteractEvent event) {
                 if (!event.getPlayer().getUniqueId().equals(player.getUniqueId())) return;
                 if (event.getClickedBlock() == null) return;
+
+                activeListeners.remove(uuid);
+
                 Location loc = event.getClickedBlock().getLocation();
                 var worldName = Objects.requireNonNull(loc.getWorld()).getName();
                 int x = loc.getBlockX(); int y = loc.getBlockY(); int z = loc.getBlockZ();
@@ -135,13 +183,13 @@ public class PollsConfigMenu extends ChildMenuImp {
                         int conflictId = -1;
                         if (define) {
                             // Pre-check conflict across all elections (snapshot, safe on main/async)
-                            for (var e : electionsService.listElectionsSnapshot()) {
-                                for (var p : e.getPolls()) {
-                                    if (p.getWorld().equalsIgnoreCase(worldName) && p.getX()==x && p.getY()==y && p.getZ()==z) {
-                                        if (e.getId() != electionId) {
+                            for (var election : electionsService.listElectionsSnapshot()) {
+                                for (var poll : election.getPolls()) {
+                                    if (poll.getWorld().equalsIgnoreCase(worldName) && poll.getX()==x && poll.getY()==y && poll.getZ()==z) {
+                                        if (election.getId() != electionId) {
                                             conflict = true;
-                                            conflictId = e.getId();
-                                            conflictTitle = e.getTitle();
+                                            conflictId = election.getId();
+                                            conflictTitle = election.getTitle();
                                             break;
                                         }
                                     }
