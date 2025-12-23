@@ -1,6 +1,6 @@
 package net.democracycraft.elections.api.model;
 
-import net.democracycraft.elections.src.data.*;
+import net.democracycraft.elections.internal.data.*;
 
 import java.util.List;
 import java.util.function.Function;

@@ -2,27 +2,28 @@ package net.democracycraft.elections;
 
 import net.democracycraft.elections.api.model.BallotErrorConfigProvider;
 import net.democracycraft.elections.api.service.ElectionsService;
-import net.democracycraft.elections.src.command.ElectionsCommand;
-import net.democracycraft.elections.src.database.DatabaseSchema;
-import net.democracycraft.elections.src.database.MySQLManager;
-import net.democracycraft.elections.src.service.SqlElectionsService;
-import net.democracycraft.elections.src.ui.common.ErrorMenu;
-import net.democracycraft.elections.src.ui.common.LoadingMenu;
-import net.democracycraft.elections.src.ui.list.ElectionPreviewMenu;
-import net.democracycraft.elections.src.ui.manager.*;
-import net.democracycraft.elections.src.ui.manager.create.*;
-import net.democracycraft.elections.src.ui.vote.*;
-import net.democracycraft.elections.src.util.export.github.GitHubGistClient;
-import net.democracycraft.elections.src.util.listener.PollInteractListener;
-import net.democracycraft.elections.src.util.listener.PlayerJoinHeadCacheListener;
-import net.democracycraft.elections.src.util.permissions.PermissionNodesStore;
+import net.democracycraft.elections.internal.command.ElectionsCommand;
+import net.democracycraft.elections.internal.database.DatabaseSchema;
+import net.democracycraft.elections.internal.database.MySQLManager;
+import net.democracycraft.elections.internal.service.SqlElectionsService;
+import net.democracycraft.elections.internal.ui.common.ErrorMenu;
+import net.democracycraft.elections.internal.ui.common.LoadingMenu;
+import net.democracycraft.elections.internal.ui.list.ElectionPreviewMenu;
+import net.democracycraft.elections.internal.ui.manager.*;
+import net.democracycraft.elections.internal.ui.manager.create.*;
+import net.democracycraft.elections.internal.ui.vote.*;
+import net.democracycraft.elections.internal.util.export.github.GitHubGistClient;
+import net.democracycraft.elections.internal.util.head.PlayerHeadCache;
+import net.democracycraft.elections.internal.util.listener.PollInteractListener;
+import net.democracycraft.elections.internal.util.permissions.PermissionNodesStore;
 import org.bukkit.command.PluginCommand;
 import org.bukkit.event.Listener;
 import org.bukkit.plugin.ServicePriority;
 import org.bukkit.plugin.java.JavaPlugin;
 import org.bukkit.scheduler.BukkitTask;
-import net.democracycraft.elections.src.util.config.ConfigPaths;
-import net.democracycraft.elections.src.util.export.local.queue.LocalExportedElectionQueue;
+import net.democracycraft.elections.internal.util.config.ConfigPaths;
+import net.democracycraft.elections.internal.util.export.local.queue.LocalExportedElectionQueue;
+import org.jetbrains.annotations.NotNull;
 
 /**
  * Main plugin entry point for DemocracyElections.
@@ -42,6 +43,7 @@ public class Elections extends JavaPlugin {
     private BukkitTask autoCloseTask;
     private BukkitTask deletedPurgeTask;
     private LocalExportedElectionQueue localQueue;
+    private PlayerHeadCache playerHeadCache;
 
     @Override
     public void onEnable() {
@@ -96,11 +98,11 @@ public class Elections extends JavaPlugin {
         this.deletedPurgeTask = getServer().getScheduler().runTaskTimerAsynchronously(this, () -> sql.runDeletedPurgeSweep(rd), 20L * 60, 20L * purgeSeconds);
 
         this.permissionNodesStore = new PermissionNodesStore();
+        this.playerHeadCache = new PlayerHeadCache();
 
         startMainCommand();
 
-        registerListener(new PollInteractListener(electionsService));
-        registerListener(new PlayerJoinHeadCacheListener(electionsService));
+        registerListener(new PollInteractListener(electionsService, this));
 
         loadConfig();
     }
@@ -172,6 +174,12 @@ public class Elections extends JavaPlugin {
      */
     public LocalExportedElectionQueue getLocalExportQueue() { return localQueue; }
 
+    public @NotNull PlayerHeadCache getPlayerHeadCache() {
+        if (playerHeadCache == null) {
+            playerHeadCache = new PlayerHeadCache();
+        }
+        return playerHeadCache;
+    }
 
     private void loadConfig() {
         GitHubGistClient.loadConfig();
@@ -194,7 +202,6 @@ public class Elections extends JavaPlugin {
         SystemAndMinimumMenu.Config.loadConfig();
         TitleEditMenu.Config.loadConfig();
         BallotIntroMenu.Config.loadConfig();
-        BlockBallotMenu.Config.loadConfig();
         CandidateListMenu.Config.loadConfig();
         CandidateVoteMenu.Config.loadConfig();
         PreferentialBallotMenu.Config.loadConfig();

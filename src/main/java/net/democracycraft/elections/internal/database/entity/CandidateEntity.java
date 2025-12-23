@@ -1,0 +1,20 @@
+package net.democracycraft.elections.internal.database.entity;
+
+/**
+ * Candidate row within an election.
+ *
+ * Constraints (see DatabaseSchema):
+ * - UNIQUE (electionId, name)
+ * - FK electionId -> elections(id)
+ */
+public class CandidateEntity {
+    /** Primary key. */
+    public int id;
+    /** Owning election identifier (FK to elections.id). */
+    public int electionId;
+    /** Candidate display name. */
+    public String name;
+    /** Optional political party or group; nullable. */
+    public String party;
+    public CandidateEntity() {}
+}
