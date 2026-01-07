@@ -20,6 +20,8 @@ Quick tip: the base command is `/elections` (alias: `/democracyelections`).
   - Manager abilities (open Manager UI, create/edit/open/close elections). Also grants: `elections.command`, `elections.export`, `elections.health`, `elections.permissions.reload`.
 - `elections.export` (default: op)
   - Allows all export operations under `/elections export` for full election exports (remote/local/both). Admin modes still require manager/admin as noted below.
+- `elections.export.admin` (default: op)
+  - Allows export with voter names: `/elections export admin <local|online> <id>`.
 - `elections.export.ballots` (default: op)
   - Allows ballots‑only export: `/elections export ballots <local|online> <id>`.
 - `elections.export.ballots.admin` (default: op)
@@ -48,7 +50,7 @@ All commands require `elections.command` plus the specific node:
 - `/elections export both <id>`
   - Publish online and also keep a local copy. Requires: `elections.export`.
 - `/elections export admin <id>` / `admin local <id>` / `admin both <id>`
-  - Admin full‑election export (includes voter names). Requires: `elections.export` + `elections.manager` (or `elections.admin`).
+  - Admin full‑election export (includes voter names). Requires: `elections.export.admin` + `elections.manager` (or `elections.admin`).
 - `/elections export ballots <local|online> <id>`
   - Export only ballots as JSON (pretty printed). Includes the candidates map and each ballot as an array of candidate IDs. Requires: `elections.export.ballots` (or `elections.export`).
 - `/elections export ballots admin <local|online> <id>`
