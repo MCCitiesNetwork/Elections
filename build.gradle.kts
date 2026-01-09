@@ -1,7 +1,7 @@
 plugins {
     java
-    id("com.gradleup.shadow") version "8.3.0"
-    id("xyz.jpenilla.run-paper") version "2.3.1"
+    id("com.gradleup.shadow") version "9.3.1"
+    id("xyz.jpenilla.run-paper") version "3.0.2"
 }
 
 group = "net.democracycraft"
@@ -16,8 +16,8 @@ repositories {
 }
 
 dependencies {
-    compileOnly("io.papermc.paper:paper-api:1.21.8-R0.1-SNAPSHOT")
-    compileOnly("net.kyori:adventure-text-minimessage:4.17.0")
+    compileOnly("io.papermc.paper:paper-api:1.21.11-R0.1-SNAPSHOT")
+    compileOnly("net.kyori:adventure-text-minimessage:4.26.1")
 }
 
 tasks {
