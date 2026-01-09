@@ -1,0 +1,48 @@
+name: Build
+
+on:
+  push:
+    branches: ["main", "master"]
+  pull_request:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: build-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up JDK
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+          cache: gradle
+
+      - name: Validate Gradle Wrapper
+        uses: gradle/wrapper-validation-action@v2
+
+      - name: Make gradlew executable
+        run: chmod +x ./gradlew
+
+      - name: Build
+        run: ./gradlew --no-daemon clean build
+
+      - name: Upload artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: build-artifacts
+          path: |
+            build/libs/*.jar
+            build/libs/*-all.jar
+            build/reports/**
+          if-no-files-found: ignore

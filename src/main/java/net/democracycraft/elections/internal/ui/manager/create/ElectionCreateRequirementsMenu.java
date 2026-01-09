@@ -83,6 +83,10 @@ public class ElectionCreateRequirementsMenu extends ChildMenuImp {
         PermissionNodesDto nodesDto = store.get();
         // Build expanded node strings including hierarchical prefixes
         List<String> expandedNodes = PermissionScanner.buildExpandedNodes(nodesDto);
+        // if nothing matched, show raw configured nodes so users can still select base nodes
+        if (expandedNodes.isEmpty() && nodesDto != null && nodesDto.nodes() != null) {
+            expandedNodes = new ArrayList<>(nodesDto.nodes());
+        }
         LinkedHashSet<String> nodeSet = new LinkedHashSet<>(expandedNodes);
         // Map node -> key
         Map<String, String> nodeToKey = new LinkedHashMap<>();

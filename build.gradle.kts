@@ -5,10 +5,11 @@ plugins {
 }
 
 group = "net.democracycraft"
-version = "1.0.12"
+version = "1.0.13"
 
 repositories {
     mavenCentral()
+    maven(uri("https://jitpack.io"))
     maven("https://repo.papermc.io/repository/maven-public/") {
         name = "papermc-repo"
     }
@@ -21,10 +22,13 @@ dependencies {
 
 tasks {
     runServer {
-        // Configure the Minecraft version for our task.
-        // This is the only required configuration besides applying the plugin.
-        // Your plugin's jar (or shadowJar if present) will be used automatically.
+
         minecraftVersion("1.21.8")
+    }
+    shadowJar {
+        configurations = listOf(project.configurations.runtimeClasspath.get())
+
+        archiveClassifier.set("")
     }
 }
 

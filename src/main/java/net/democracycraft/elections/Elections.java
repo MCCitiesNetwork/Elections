@@ -124,7 +124,6 @@ public class Elections extends JavaPlugin {
 
     @Override
     public void onDisable() {
-        // Cancel scheduled task
         if (autoCloseTask != null) {
             autoCloseTask.cancel();
             autoCloseTask = null;
