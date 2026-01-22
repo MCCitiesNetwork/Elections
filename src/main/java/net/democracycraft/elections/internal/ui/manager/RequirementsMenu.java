@@ -171,7 +171,7 @@ public class RequirementsMenu extends ChildMenuImp {
 
             final RequirementsDto dto = new RequirementsDto(newPerms, minutes);
             // Offload DB write to async and then update UI back on main thread.
-            new LoadingMenu(playerActor, getParentMenu(), miniMessage(config.loadingTitle, placeholders), miniMessage(config.loadingMessage, placeholders)).open();
+            new LoadingMenu(playerActor, miniMessage(config.loadingTitle, placeholders), miniMessage(config.loadingMessage, placeholders)).open();
             new BukkitRunnable() {
                 @Override
                 public void run() {

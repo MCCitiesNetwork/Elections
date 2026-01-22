@@ -20,6 +20,7 @@ public enum StateChangeType implements Dto {
     BALLOT_MODE_CHANGED,
     // Structure changes
     CANDIDATE_ADDED,
+    CANDIDATE_UPDATED,
     CANDIDATE_REMOVED,
     POLL_ADDED,
     POLL_REMOVED

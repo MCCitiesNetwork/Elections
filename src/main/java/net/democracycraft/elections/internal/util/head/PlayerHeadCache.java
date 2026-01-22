@@ -2,10 +2,12 @@ package net.democracycraft.elections.internal.util.head;
 
 import com.destroystokyo.paper.profile.PlayerProfile;
 import com.destroystokyo.paper.profile.ProfileProperty;
+import net.democracycraft.elections.Elections;
 import org.bukkit.Bukkit;
 import org.bukkit.Material;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.meta.SkullMeta;
+import org.jetbrains.annotations.NotNull;
 
 import java.util.Map;
 import java.util.Set;
@@ -14,77 +16,44 @@ import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
 
 public class PlayerHeadCache {
-    private final Map<UUID, PlayerProfile> cache = new ConcurrentHashMap<>();
-    private final Map<String, UUID> nameToUUIDCache = new ConcurrentHashMap<>();
-    private final Set<UUID> failingProfiles = ConcurrentHashMap.newKeySet();
+    private final Elections plugin;
 
-    public CompletableFuture<ItemStack> getPlayerHead(UUID playerUUID) {
-        if (playerUUID == null) return CompletableFuture.completedFuture(new ItemStack(Material.AIR));
-
-        // use cached profile if available
-        PlayerProfile cached = cache.get(playerUUID);
-        if (cached != null && hasTextures(cached)) {
-            return CompletableFuture.completedFuture(createHeadFromProfile(cached));
-        }
-
-        if (failingProfiles.contains(playerUUID)) {
-            return CompletableFuture.completedFuture(new ItemStack(Material.AIR));
-        }
-
-        // create profile
-        PlayerProfile profile = Bukkit.createProfile(playerUUID);
-
-        return profile.update().thenApply(updatedProfile -> {
-            // save to local cache (not persistent)
-            cache.put(playerUUID, updatedProfile);
-            failingProfiles.remove(playerUUID);
-            return createHeadFromProfile(updatedProfile);
-        }).exceptionally(ex -> {
-            failingProfiles.add(playerUUID);
-            return new ItemStack(Material.AIR);
-        });
+    public PlayerHeadCache(Elections plugin) {
+        this.plugin = plugin;
     }
 
-    public CompletableFuture<ItemStack> getPlayerHead(String playerName) {
-        if (playerName == null || playerName.isEmpty()) {
-            return CompletableFuture.completedFuture(new ItemStack(Material.AIR));
-        }
+    public CompletableFuture<ItemStack> getPlayerHead(@NotNull UUID playerUUID) {
 
-        UUID cachedUUID = nameToUUIDCache.get(playerName);
-        if (cachedUUID != null) {
-            return getPlayerHead(cachedUUID);
-        }
-
-        // resolve profile by name
-        PlayerProfile profile = Bukkit.createProfile(playerName);
-
-        // call update to fetch UUID and properties
-        return profile.update().thenApply(updatedProfile -> {
-            // save to local cache (not persistent)
-            cache.put(updatedProfile.getId(), updatedProfile);
-            nameToUUIDCache.put(playerName, updatedProfile.getId());
-            return createHeadFromProfile(updatedProfile);
-        }).exceptionally(ex -> {
-            return new ItemStack(Material.AIR);
-        });
-    }
-
-    private boolean hasTextures(PlayerProfile profile) {
-        for (ProfileProperty property : profile.getProperties()) {
-            if (property.getName().equalsIgnoreCase("textures")) {
-                return true;
+        return plugin.getMojangService().getSkin(playerUUID).thenApply(skin -> {
+            if (skin == null) {
+                return new ItemStack(Material.AIR);
             }
-        }
-        return false;
+
+            ItemStack head = new ItemStack(Material.PLAYER_HEAD);
+
+
+            head.editMeta(meta -> {
+                if (meta instanceof SkullMeta skullMeta) {
+                    PlayerProfile ownerProfile = Bukkit.createProfile(playerUUID);
+                    ownerProfile.setProperty(new ProfileProperty("textures", skin.value(), skin.signature()));
+
+                    skullMeta.setPlayerProfile(ownerProfile);
+                }
+            });
+
+            return head;
+        }).exceptionally(ignored -> new ItemStack(Material.AIR));
     }
 
-    private ItemStack createHeadFromProfile(PlayerProfile profile) {
-        ItemStack head = new ItemStack(Material.PLAYER_HEAD);
-        SkullMeta meta = (SkullMeta) head.getItemMeta();
-        if (meta != null) {
-            meta.setPlayerProfile(profile);
-            head.setItemMeta(meta);
-        }
-        return head;
+    public CompletableFuture<ItemStack> getPlayerHead(@NotNull String playerName) {
+       return plugin.getMojangService().getUUID(playerName).thenCompose(uuid ->{
+              if (uuid == null) {
+                  return CompletableFuture.completedFuture(new ItemStack(Material.AIR));
+              }
+           return getPlayerHead(uuid);
+       }).exceptionally(ignored -> new ItemStack(Material.AIR));
+
+
     }
+
 }

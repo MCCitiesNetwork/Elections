@@ -169,7 +169,7 @@ public class ElectionManagerMenu extends ParentMenuImp {
             // Determine action and perform DB writes asynchronously
             switch (election.getStatus()) {
                 case OPEN -> {
-                    new LoadingMenu(context.player(), ElectionManagerMenu.this, miniMessage(config.loadingTitle, placeholders), miniMessage(config.loadingMessage, placeholders)).open();
+                    new LoadingMenu(context.player(), miniMessage(config.loadingTitle, placeholders), miniMessage(config.loadingMessage, placeholders)).open();
                     new BukkitRunnable() {
                         @Override
                         public void run() {
@@ -196,7 +196,7 @@ public class ElectionManagerMenu extends ParentMenuImp {
                             return;
                         }
                     }
-                    new LoadingMenu(context.player(), ElectionManagerMenu.this, miniMessage(config.loadingTitle, placeholders), miniMessage(config.loadingMessage, placeholders)).open();
+                    new LoadingMenu(context.player(), miniMessage(config.loadingTitle, placeholders), miniMessage(config.loadingMessage, placeholders)).open();
                     new BukkitRunnable() {
                         @Override
                         public void run() {
@@ -229,7 +229,7 @@ public class ElectionManagerMenu extends ParentMenuImp {
 
         builder.button(miniMessage(config.systemAndMinimumBtn, placeholders), context -> new SystemAndMinimumMenu(context.player(), this, electionService, electionId).open());
         builder.button(miniMessage(config.ballotModeBtn, placeholders), context -> new BallotModeMenu(context.player(), this, electionService, electionId).open());
-        builder.button(miniMessage(config.candidatesBtn, placeholders), context -> new CandidatesMenu(context.player(), this, electionService, electionId).open());
+        builder.button(miniMessage(config.candidatesBtn, placeholders), context -> new CandidatesAddMenu(context.player(), this, electionService, electionId).open());
         builder.button(miniMessage(config.requirementsBtn, placeholders), context -> new RequirementsMenu(context.player(), this, electionService, electionId).open());
 
         // Delete with double confirmation (requires manager permission); hidden for DELETED elections
@@ -247,7 +247,7 @@ public class ElectionManagerMenu extends ParentMenuImp {
                     confirm2.title(miniMessage(config.deleteConfirmFinalTitle, placeholders));
                     confirm2.afterAction(DialogBase.DialogAfterAction.CLOSE);
                     confirm2.button(miniMessage(config.deleteConfirmFinalBtn, placeholders), c2 -> {
-                        new LoadingMenu(c2.player(), ElectionManagerMenu.this, miniMessage(config.loadingTitle, placeholders), miniMessage(config.loadingMessage, placeholders)).open();
+                        new LoadingMenu(c2.player(), miniMessage(config.loadingTitle, placeholders), miniMessage(config.loadingMessage, placeholders)).open();
                         new BukkitRunnable() {
                             @Override
                             public void run() {

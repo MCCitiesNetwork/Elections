@@ -209,7 +209,7 @@ public class PreferentialBallotMenu extends ChildMenuImp {
             List<Integer> orderedCandidateIds = new ArrayList<>();
             for (Map.Entry<Integer, Integer> entry : orderedEntries) orderedCandidateIds.add(entry.getKey());
 
-            new LoadingMenu(playerActor, getParentMenu(), miniMessage(config.loadingTitle, placeholders), miniMessage(config.loadingMessage, placeholders)).open();
+            new LoadingMenu(playerActor, miniMessage(config.loadingTitle, placeholders), miniMessage(config.loadingMessage, placeholders)).open();
             new BukkitRunnable() {
                 @Override
                 public void run() {

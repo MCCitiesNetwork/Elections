@@ -16,8 +16,11 @@ repositories {
 }
 
 dependencies {
+    val democracyLibVersion = "5891d074b3"
+    val democracyLib = "com.github.MCCitiesNetwork:DemocracyLib:$democracyLibVersion"
     compileOnly("io.papermc.paper:paper-api:1.21.8-R0.1-SNAPSHOT")
     compileOnly("net.kyori:adventure-text-minimessage:4.17.0")
+    implementation(democracyLib)
 }
 
 tasks {

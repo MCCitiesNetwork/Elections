@@ -172,4 +172,12 @@ public abstract class MenuImp implements Menu {
     protected Component miniMessage(String text) {
         return MiniMessageUtil.parseOrPlain(text);
     }
+
+    /**
+     * Helper to get the default YAML config file name for this menu class.
+     * By default, returns the simple class name.
+     */
+    public String getMenuConfigFileName() {
+        return this.getClass().getSimpleName();
+    }
 }

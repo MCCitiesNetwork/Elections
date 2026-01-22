@@ -452,6 +452,36 @@ public class SqlElectionsService implements ElectionsService {
         return mem.getElection(electionId).flatMap(e -> e.getCandidates().stream().filter(c -> c.getId()==id).findFirst());
     }
 
+    public Optional<Candidate> updateCandidate(int electionId, int candidateId, String name, String party, String actor) {
+        Map<String, Object> where = new HashMap<>();
+        where.put("electionId", electionId);
+        where.put("name", name);
+        List<CandidateEntity> conflicting = schema.candidates().findAllByMany(where, "id");
+        if (conflicting.stream().anyMatch(c -> c.id != candidateId)) {
+            return Optional.empty(); // Name taken by another candidate
+        }
+
+        // Update DB
+        CandidateEntity row = schema.candidates().findBy("id", candidateId);
+        if (row == null || row.electionId != electionId) return Optional.empty();
+
+        String oldName = row.name;
+        String oldParty = row.party;
+        String newParty = (party == null || party.isBlank()) ? null : party;
+
+        row.name = name;
+        row.party = newParty;
+
+        schema.candidates().insertOrUpdateSync(row);
+
+        logChange(electionId, StateChangeType.CANDIDATE_UPDATED, actor,
+                "id=" + candidateId + ",oldName=" + oldName + ",newName=" + name + ",oldParty=" + oldParty + ",newParty=" + newParty);
+
+        refreshElection(electionId);
+
+        return mem.getElection(electionId).flatMap(e -> e.getCandidates().stream().filter(c -> c.getId()==candidateId).findFirst());
+    }
+
     public boolean removeCandidate(int electionId, int candidateId, String actor) {
         Map<String, Object> where = new HashMap<>();
         where.put("id", candidateId);
@@ -742,6 +772,10 @@ public class SqlElectionsService implements ElectionsService {
             if (ok) runOnMain(() -> callEvent(new ElectionExportedEvent(electionId, actor)));
             return ok;
         }, executor);
+    }
+
+    @Override public CompletableFuture<Optional<Candidate>> updateCandidateAsync(int electionId, int candidateId, String name, String party, String actor) {
+        return CompletableFuture.supplyAsync(() -> updateCandidate(electionId, candidateId, name, party, actor), executor);
     }
 
     public void shutdown() {

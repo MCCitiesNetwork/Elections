@@ -8,7 +8,7 @@ package net.democracycraft.elections.internal.data;
  */
 public class CandidateDto implements Dto {
     private final int id;
-    private final String name;
+    private String name;
     /** Optional political party or group; may be null. */
     private String party;
     private final String headDatabaseId;
@@ -30,6 +30,8 @@ public class CandidateDto implements Dto {
 
     public int getId() { return id; }
     public String getName() { return name; }
+
+    public void setName(String name) { this.name = name; }
 
     /**
      * Optional party name for the candidate; may be null.

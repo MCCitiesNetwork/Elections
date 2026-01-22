@@ -95,7 +95,7 @@ public class TitleEditMenu extends ChildMenuImp {
                 return;
             }
             // Run DB writes off the main thread and then update the UI back on main.
-            new LoadingMenu(playerActor, getParentMenu(), miniMessage(config.loadingTitle, placeholders), miniMessage(config.loadingMessage, placeholders)).open();
+            new LoadingMenu(playerActor, miniMessage(config.loadingTitle, placeholders), miniMessage(config.loadingMessage, placeholders)).open();
             new BukkitRunnable() {
                 @Override
                 public void run() {

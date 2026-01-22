@@ -1,5 +1,7 @@
 package net.democracycraft.elections;
 
+import net.democracycraft.democracyLib.api.DemocracyLibApi;
+import net.democracycraft.democracyLib.api.service.mojang.MojangService;
 import net.democracycraft.elections.api.model.BallotErrorConfigProvider;
 import net.democracycraft.elections.api.service.ElectionsService;
 import net.democracycraft.elections.internal.command.ElectionsCommand;
@@ -44,10 +46,14 @@ public class Elections extends JavaPlugin {
     private BukkitTask deletedPurgeTask;
     private LocalExportedElectionQueue localQueue;
     private PlayerHeadCache playerHeadCache;
+    private DemocracyLibApi democracyLibApi;
+    private MojangService<Elections> mojangService;
 
     @Override
     public void onEnable() {
         instance = this;
+        democracyLibApi = DemocracyLibApi.instance(this,true);
+        mojangService = democracyLibApi.getMojangService(this);
         saveDefaultConfig();
 
         getConfig().options().copyDefaults(true);
@@ -98,13 +104,21 @@ public class Elections extends JavaPlugin {
         this.deletedPurgeTask = getServer().getScheduler().runTaskTimerAsynchronously(this, () -> sql.runDeletedPurgeSweep(rd), 20L * 60, 20L * purgeSeconds);
 
         this.permissionNodesStore = new PermissionNodesStore();
-        this.playerHeadCache = new PlayerHeadCache();
+        this.playerHeadCache = new PlayerHeadCache(this);
 
         startMainCommand();
 
         registerListener(new PollInteractListener(electionsService, this));
 
         loadConfig();
+    }
+
+    public MojangService<Elections> getMojangService() {
+        return mojangService;
+    }
+
+    public DemocracyLibApi getDemocracyLibApi() {
+        return democracyLibApi;
     }
 
     private void registerListener(Listener listener){
@@ -175,7 +189,7 @@ public class Elections extends JavaPlugin {
 
     public @NotNull PlayerHeadCache getPlayerHeadCache() {
         if (playerHeadCache == null) {
-            playerHeadCache = new PlayerHeadCache();
+            playerHeadCache = new PlayerHeadCache(this);
         }
         return playerHeadCache;
     }
@@ -192,7 +206,7 @@ public class Elections extends JavaPlugin {
         ElectionCreateSystemMenu.Config.loadConfig();
         ElectionCreateWizard.Config.loadConfig();
         BallotModeMenu.Config.loadConfig();
-        CandidatesMenu.Config.loadConfig();
+        CandidatesAddMenu.Config.loadConfig();
         DurationMenu.Config.loadConfig();
         ElectionListMenu.Config.loadConfig();
         ElectionManagerMenu.Config.loadConfig();

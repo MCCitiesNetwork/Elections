@@ -188,7 +188,7 @@ public class SimplePreferentialBallotMenu extends ChildMenuImp {
             entries.sort(java.util.Comparator.comparingInt(Map.Entry::getValue));
             List<Integer> orderedCandidateIds = new ArrayList<>();
             for (Map.Entry<Integer, Integer> entry : entries) orderedCandidateIds.add(entry.getKey());
-            new LoadingMenu(playerActor, getParentMenu(), miniMessage(config.loadingTitle, ph), miniMessage(config.loadingMessage, ph)).open();
+            new LoadingMenu(playerActor, miniMessage(config.loadingTitle, ph), miniMessage(config.loadingMessage, ph)).open();
             new BukkitRunnable() {
                 @Override
                 public void run() {

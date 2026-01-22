@@ -113,7 +113,7 @@ public class DurationMenu extends ChildMenuImp {
             int hours = hoursVal == null ? 0 : Math.round(hoursVal);
             int minutes = minutesVal == null ? 0 : Math.round(minutesVal);
             TimeDto timeDto = new TimeDto(0, minutes, hours);
-            new LoadingMenu(playerActor, getParentMenu(), miniMessage(config.loadingTitle, placeholders), miniMessage(config.loadingMessage, placeholders)).open();
+            new LoadingMenu(playerActor, miniMessage(config.loadingTitle, placeholders), miniMessage(config.loadingMessage, placeholders)).open();
             // Offload DB write to async
             new BukkitRunnable() {
                 @Override
@@ -132,7 +132,7 @@ public class DurationMenu extends ChildMenuImp {
 
         dialogBuilder.button(miniMessage(config.clearedBtn, placeholders), context -> {
             // Run clear asynchronously
-            new LoadingMenu(context.player(), getParentMenu(), miniMessage(config.loadingTitle, placeholders), miniMessage(config.loadingMessage, placeholders)).open();
+            new LoadingMenu(context.player(), miniMessage(config.loadingTitle, placeholders), miniMessage(config.loadingMessage, placeholders)).open();
             new BukkitRunnable() {
                 @Override
                 public void run() {

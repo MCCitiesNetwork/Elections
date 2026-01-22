@@ -114,7 +114,7 @@ public class SystemAndMinimumMenu extends ChildMenuImp {
             confirm.title(miniMessage(config.confirmCycleTitle, placeholders));
             confirm.button(miniMessage(config.confirmBtn, placeholders), c2 -> {
                 // Perform the update asynchronously to avoid DB on main thread
-                new LoadingMenu(c2.player(), getParentMenu(), miniMessage(config.loadingTitle, placeholders), miniMessage(config.loadingMessage, placeholders)).open();
+                new LoadingMenu(c2.player(), miniMessage(config.loadingTitle, placeholders), miniMessage(config.loadingMessage, placeholders)).open();
                 new org.bukkit.scheduler.BukkitRunnable() {
                     @Override
                     public void run() {
@@ -156,7 +156,7 @@ public class SystemAndMinimumMenu extends ChildMenuImp {
             }
             final int minVotesFinal = minVotes;
             // Run DB write asynchronously, then update UI on main
-            new LoadingMenu(playerActor, getParentMenu(), miniMessage(config.loadingTitle, placeholders), miniMessage(config.loadingMessage, placeholders)).open();
+            new LoadingMenu(playerActor, miniMessage(config.loadingTitle, placeholders), miniMessage(config.loadingMessage, placeholders)).open();
             new org.bukkit.scheduler.BukkitRunnable() {
                 @Override
                 public void run() {

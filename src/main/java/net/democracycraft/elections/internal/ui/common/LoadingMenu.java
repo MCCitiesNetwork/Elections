@@ -3,9 +3,8 @@ package net.democracycraft.elections.internal.ui.common;
 import io.papermc.paper.dialog.Dialog;
 import io.papermc.paper.registry.data.dialog.DialogBase;
 import io.papermc.paper.registry.data.dialog.body.DialogBody;
-import net.democracycraft.elections.api.ui.ParentMenu;
-import net.democracycraft.elections.internal.ui.ChildMenuImp;
 import net.democracycraft.elections.api.ui.AutoDialog;
+import net.democracycraft.elections.internal.ui.ParentMenuImp;
 import net.kyori.adventure.text.Component;
 import org.bukkit.entity.Player;
 
@@ -15,7 +14,7 @@ import java.io.Serializable;
  * Simple loading screen child menu with MiniMessage-configurable texts.
  * Now supports providing a custom title and message per usage site.
  */
-public class LoadingMenu extends ChildMenuImp {
+public class LoadingMenu extends ParentMenuImp {
 
     private final Component titleOverride;
     private final Component messageOverride;
@@ -24,10 +23,9 @@ public class LoadingMenu extends ChildMenuImp {
      * Creates a LoadingMenu using YAML-configured title and message.
      *
      * @param player the player opening the menu
-     * @param parent the parent menu
      */
-    public LoadingMenu(Player player, ParentMenu parent) {
-        super(player, parent, "loading");
+    public LoadingMenu(Player player) {
+        super(player, "loading");
         this.titleOverride = null;
         this.messageOverride = null;
         this.setDialog(build());
@@ -37,11 +35,10 @@ public class LoadingMenu extends ChildMenuImp {
      * Creates a LoadingMenu using a custom title, and YAML-configured message.
      *
      * @param player the player opening the menu
-     * @param parent the parent menu
      * @param title custom pre-built Component title
      */
-    public LoadingMenu(Player player, ParentMenu parent, Component title) {
-        super(player, parent, "loading");
+    public LoadingMenu(Player player, Component title) {
+        super(player, "loading");
         this.titleOverride = title;
         this.messageOverride = null;
         this.setDialog(build());
@@ -51,12 +48,11 @@ public class LoadingMenu extends ChildMenuImp {
      * Creates a LoadingMenu using a custom title and custom message.
      *
      * @param player the player opening the menu
-     * @param parent the parent menu
      * @param title custom pre-built Component title
      * @param message custom pre-built Component message shown in the body
      */
-    public LoadingMenu(Player player, ParentMenu parent, Component title, Component message) {
-        super(player, parent, "loading");
+    public LoadingMenu(Player player, Component title, Component message) {
+        super(player, "loading");
         this.titleOverride = title;
         this.messageOverride = message;
         this.setDialog(build());

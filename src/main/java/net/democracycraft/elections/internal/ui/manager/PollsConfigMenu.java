@@ -119,7 +119,7 @@ public class PollsConfigMenu extends ChildMenuImp {
                     this,
                     config.confirmRemoveAllMsg,
                     player -> {
-                        new LoadingMenu(player, getParentMenu(), miniMessage(config.loadingTitle, null), miniMessage(config.loadingMessage, null)).open();
+                        new LoadingMenu(player, miniMessage(config.loadingTitle, null), miniMessage(config.loadingMessage, null)).open();
                         new BukkitRunnable() {
                             @Override
                             public void run() {
@@ -173,7 +173,7 @@ public class PollsConfigMenu extends ChildMenuImp {
                 event.setCancelled(true);
                 dynamicListener.stop(); dynamicListener.deleteListener();
                 // Execute DB update asynchronously
-                new LoadingMenu(player, getParentMenu(), miniMessage(config.loadingTitle, null), miniMessage(config.loadingMessage, null)).open();
+                new LoadingMenu(player, miniMessage(config.loadingTitle, null), miniMessage(config.loadingMessage, null)).open();
                 new BukkitRunnable() {
                     @Override
                     public void run() {

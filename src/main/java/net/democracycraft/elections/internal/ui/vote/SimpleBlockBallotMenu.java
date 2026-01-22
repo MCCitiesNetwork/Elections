@@ -159,7 +159,7 @@ public class SimpleBlockBallotMenu extends ChildMenuImp {
                         java.util.List.of(base, detail)).open();
                 return;
             }
-            new LoadingMenu(playerActor, getParentMenu(), miniMessage(config.loadingTitle, ph), miniMessage(config.loadingMessage, ph)).open();
+            new LoadingMenu(playerActor, miniMessage(config.loadingTitle, ph), miniMessage(config.loadingMessage, ph)).open();
             new BukkitRunnable() {
                 @Override
                 public void run() {

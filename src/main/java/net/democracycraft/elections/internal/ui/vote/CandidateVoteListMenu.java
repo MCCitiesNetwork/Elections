@@ -174,10 +174,20 @@ public class CandidateVoteListMenu extends ChildMenuImp {
                     "%state%", stateText
             ));
             dialogBuilder.button(miniMessage(labelMini, null), context -> {
-                new LoadingMenu(context.player(), this.getParentMenu()).open();
-                plugin.getPlayerHeadCache().getPlayerHead(candidate.getName()).thenAccept(head -> {
-                    Bukkit.getScheduler().runTask(plugin, () -> new CandidateVoteMenu(context.player(), this.getParentMenu(), electionsService, electionId, candidate.getId(), head, plugin).open());
-                });
+                new LoadingMenu(context.player()).open();
+                plugin.getPlayerHeadCache().getPlayerHead(candidate.getName()).thenAccept(head -> Bukkit.getScheduler()
+                                .runTask(plugin, () ->
+                                        new CandidateVoteMenu(
+                                                context.player(),
+                                                this.getParentMenu(),
+                                                electionsService,
+                                                electionId,
+                                                candidate.getId(),
+                                                head,
+                                                plugin
+                                        ).open()
+                                )
+                );
             });
         }
         if (page > 0) dialogBuilder.button(miniMessage(config.prevBtn, placeholders), c -> new CandidateVoteListMenu(c.player(), getParentMenu(), electionsService, electionId, page - 1, plugin).open());
@@ -195,7 +205,7 @@ public class CandidateVoteListMenu extends ChildMenuImp {
                             List.of(base, detail)).open();
                     return;
                 }
-                new LoadingMenu(playerActor, getParentMenu(), miniMessage(config.loadingTitle, placeholders), miniMessage(config.loadingMessage, placeholders)).open();
+                new LoadingMenu(playerActor, miniMessage(config.loadingTitle, placeholders), miniMessage(config.loadingMessage, placeholders)).open();
                 new BukkitRunnable() {
                     @Override
                     public void run() {
@@ -264,7 +274,7 @@ public class CandidateVoteListMenu extends ChildMenuImp {
                 entries.sort(java.util.Comparator.comparingInt(Map.Entry::getValue));
                 List<Integer> orderedCandidateIds = new ArrayList<>();
                 for (Map.Entry<Integer,Integer> entry : entries) orderedCandidateIds.add(entry.getKey());
-                new LoadingMenu(playerActor, getParentMenu(), miniMessage(config.loadingTitle, placeholders), miniMessage(config.loadingMessage, placeholders)).open();
+                new LoadingMenu(playerActor, miniMessage(config.loadingTitle, placeholders), miniMessage(config.loadingMessage, placeholders)).open();
                 new BukkitRunnable() {
                     @Override
                     public void run() {

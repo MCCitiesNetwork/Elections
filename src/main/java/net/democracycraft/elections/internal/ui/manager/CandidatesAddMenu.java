@@ -22,7 +22,7 @@ import java.util.Optional;
  * Child dialog to manage election candidates (add/remove).
  * All texts are configurable via data/menus/CandidatesMenu.yml with placeholders.
  */
-public class CandidatesMenu extends ChildMenuImp {
+public class CandidatesAddMenu extends ChildMenuImp {
 
     enum Keys { CANDIDATE_NAME, CANDIDATE_PARTY }
 
@@ -35,7 +35,7 @@ public class CandidatesMenu extends ChildMenuImp {
      * @param electionsService elections service
      * @param electionId election identifier
      */
-    public CandidatesMenu(Player player, ParentMenu parent, ElectionsService electionsService, int electionId) {
+    public CandidatesAddMenu(Player player, ParentMenu parent, ElectionsService electionsService, int electionId) {
         super(player, parent, "candidates_" + electionId);
         this.electionsService = electionsService;
         this.electionId = electionId;
@@ -62,8 +62,8 @@ public class CandidatesMenu extends ChildMenuImp {
         public Config() {}
 
         public static void loadConfig() {
-            var yml = getOrCreateMenuYml(CandidatesMenu.Config.class, "CandidatesMenu.yml", new CandidatesMenu.Config().yamlHeader);
-            yml.loadOrCreate(CandidatesMenu.Config::new);
+            var yml = getOrCreateMenuYml(CandidatesAddMenu.Config.class, "CandidatesMenu.yml", new CandidatesAddMenu.Config().yamlHeader);
+            yml.loadOrCreate(CandidatesAddMenu.Config::new);
         }
     }
 
@@ -91,13 +91,13 @@ public class CandidatesMenu extends ChildMenuImp {
             String party = response.getText(Keys.CANDIDATE_PARTY.name());
             if (name == null || name.isBlank()) {
                 playerActor.sendMessage(miniMessage(config.nameEmptyMsg, null));
-                new CandidatesMenu(playerActor, getParentMenu(), electionsService, electionId).open();
+                new CandidatesAddMenu(playerActor, getParentMenu(), electionsService, electionId).open();
                 return;
             }
             if (party != null && party.isBlank()) party = null;
             final String partyFinal = party;
             // Offload add to async thread
-            new LoadingMenu(playerActor, getParentMenu(), miniMessage(config.loadingTitle, null), miniMessage(config.loadingMessage, null)).open();
+            new LoadingMenu(playerActor, miniMessage(config.loadingTitle, null), miniMessage(config.loadingMessage, null)).open();
             new BukkitRunnable() {
                 @Override
                 public void run() {
@@ -107,12 +107,12 @@ public class CandidatesMenu extends ChildMenuImp {
                         public void run() {
                             if (added.isEmpty()) {
                                 playerActor.sendMessage(miniMessage(config.addFailedMsg, null));
-                                new CandidatesMenu(playerActor, getParentMenu(), electionsService, electionId).open();
+                                new CandidatesAddMenu(playerActor, getParentMenu(), electionsService, electionId).open();
                                 return;
                             }
                             Candidate candidate = added.get();
                             playerActor.sendMessage(miniMessage(config.addedMsg, Map.of("%candidate_id%", String.valueOf(candidate.getId()), "%candidate_name%", name)));
-                            new CandidatesMenu(playerActor, getParentMenu(), electionsService, electionId).open();
+                            new CandidatesAddMenu(playerActor, getParentMenu(), electionsService, electionId).open();
                         }
                     }.runTask(Elections.getInstance());
                 }

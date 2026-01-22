@@ -7,6 +7,7 @@ import net.democracycraft.elections.api.service.ElectionsService;
 import net.democracycraft.elections.internal.data.BallotMode;
 import net.democracycraft.elections.internal.data.*;
 import org.jetbrains.annotations.NotNull;
+import org.jspecify.annotations.NonNull;
 
 import java.util.*;
 import java.util.concurrent.CompletableFuture;
@@ -25,11 +26,11 @@ public class MemoryElectionsService implements ElectionsService {
     private final Map<Integer, ElectionDto> elections = new LinkedHashMap<>();
     private final AtomicInteger electionIdSeq = new AtomicInteger(1);
 
-    private static TimeStampDto now() {
-        Calendar c = Calendar.getInstance(TimeZone.getTimeZone("UTC"));
+    private static @NonNull TimeStampDto now() {
+        Calendar calendar = Calendar.getInstance(TimeZone.getTimeZone("UTC"));
         return new TimeStampDto(
-                new DateDto(c.get(Calendar.DAY_OF_MONTH), c.get(Calendar.MONTH) + 1, c.get(Calendar.YEAR)),
-                new TimeDto(c.get(Calendar.SECOND), c.get(Calendar.MINUTE), c.get(Calendar.HOUR_OF_DAY))
+                new DateDto(calendar.get(Calendar.DAY_OF_MONTH), calendar.get(Calendar.MONTH) + 1, calendar.get(Calendar.YEAR)),
+                new TimeDto(calendar.get(Calendar.SECOND), calendar.get(Calendar.MINUTE), calendar.get(Calendar.HOUR_OF_DAY))
         );
     }
 
@@ -213,6 +214,39 @@ public class MemoryElectionsService implements ElectionsService {
         dto.addCandidate(c);
         dto.addStatusChange(new StatusChangeDto(now(), StateChangeType.CANDIDATE_ADDED, actor, "id=" + c.getId() + ",name=" + c.getName() + (c.getParty()==null?"":" ,party="+c.getParty())));
         return Optional.of(wrapCandidate(c));
+    }
+
+    public synchronized Optional<Candidate> updateCandidate(int electionId, int candidateId, String name, String party, String actor) {
+        ElectionDto dto = elections.get(electionId);
+        if (dto == null) return Optional.empty();
+
+        Optional<CandidateDto> candidateOpt = dto.getCandidates().stream()
+                .filter(candidateDto -> candidateDto.getId() == candidateId)
+                .findFirst();
+
+        if (candidateOpt.isEmpty()) return Optional.empty();
+        CandidateDto candidateDto = candidateOpt.get();
+
+        String oldName = candidateDto.getName();
+        String oldParty = candidateDto.getParty();
+        String newParty = (party == null || party.isBlank()) ? null : party;
+
+        // If name is changing, check for duplicates in the same election
+        if (!Objects.equals(oldName, name)) {
+            boolean exists = dto.getCandidates().stream()
+                    .anyMatch(other -> other.getId() != candidateId && other.getName().equalsIgnoreCase(name));
+            if (exists) return Optional.empty(); // Name taken
+            candidateDto.setName(name);
+        }
+
+        if (!Objects.equals(oldParty, newParty)) {
+            candidateDto.setParty(newParty);
+        }
+
+        dto.addStatusChange(new StatusChangeDto(now(), StateChangeType.CANDIDATE_UPDATED, actor,
+                "id=" + candidateId + ",oldName=" + oldName + ",newName=" + name + ",oldParty=" + oldParty + ",newParty=" + candidateDto.getParty()));
+
+        return Optional.of(wrapCandidate(candidateDto));
     }
 
     public synchronized boolean removeCandidate(int electionId, int candidateId, String actor) {
@@ -544,4 +578,5 @@ public class MemoryElectionsService implements ElectionsService {
     @Override public CompletableFuture<Boolean> setCandidateHeadItemBytesAsync(int electionId, int candidateId, byte[] data) { return CompletableFuture.completedFuture(setCandidateHeadItemBytes(electionId, candidateId, data)); }
     @Override public CompletableFuture<byte[]> getCandidateHeadItemBytesAsync(int electionId, int candidateId) { return CompletableFuture.completedFuture(getCandidateHeadItemBytes(electionId, candidateId)); }
     @Override public CompletableFuture<Boolean> markExportedAsync(int electionId, String actor) { return CompletableFuture.completedFuture(markExported(electionId, actor)); }
+    @Override public CompletableFuture<Optional<Candidate>> updateCandidateAsync(int electionId, int candidateId, String name, String party, String actor) { return CompletableFuture.completedFuture(updateCandidate(electionId, candidateId, name, party, actor)); }
 }

@@ -95,7 +95,7 @@ public class ElectionCreateConfirmMenu extends ChildMenuImp {
         dialogBuilder.button(miniMessage(config.confirmBtn), context -> {
             var service = wizard.getService();
             // Run creation on async thread; then UI update back on main
-            new LoadingMenu(context.player(), getParentMenu(), miniMessage(config.loadingTitle, null), miniMessage(config.loadingMessage, null)).open();
+            new LoadingMenu(context.player(), miniMessage(config.loadingTitle, null), miniMessage(config.loadingMessage, null)).open();
             new BukkitRunnable() {
                 @Override
                 public void run() {
